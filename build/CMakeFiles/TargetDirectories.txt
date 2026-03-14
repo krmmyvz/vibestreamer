@@ -1,0 +1,9 @@
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/XtreamPlayer.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/edit_cache.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/rebuild_cache.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/list_install_components.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/install.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/install/local.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/install/strip.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/XtreamPlayer_autogen_timestamp_deps.dir
+/home/kerem/Masaüstü/xtream-qt/build/CMakeFiles/XtreamPlayer_autogen.dir

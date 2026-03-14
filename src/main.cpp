@@ -1,0 +1,26 @@
+#include "mainwindow.h"
+
+#include <QApplication>
+#include <clocale>
+
+int main(int argc, char *argv[])
+{
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    QApplication::setHighDpiScaleFactorRoundingPolicy(
+        Qt::HighDpiScaleFactorRoundingPolicy::PassThrough);
+#endif
+
+    QApplication app(argc, argv);
+    app.setApplicationName(QStringLiteral("XtreamPlayer"));
+    app.setOrganizationName(QStringLiteral("XtreamPlayer"));
+    app.setApplicationVersion(QStringLiteral("2.0.0"));
+
+    // libmpv requires LC_NUMERIC="C" — must be set AFTER QApplication
+    // because QApplication constructor resets the locale
+    std::setlocale(LC_NUMERIC, "C");
+
+    MainWindow w;
+    w.show();
+
+    return app.exec();
+}
