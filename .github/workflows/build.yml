@@ -184,12 +184,16 @@ jobs:
         with:
           arch: amd64
 
+      - name: Install ZLIB
+        run: vcpkg install zlib:x64-windows
+
       - name: Configure
         shell: pwsh
         run: |
           $mpvDir = "${{ github.workspace }}\mpv-dev"
           cmake -B build `
             -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DCMAKE_BUILD_TYPE=Release `
             -DMPV_DIR="$mpvDir"
 

@@ -69,6 +69,10 @@ qt_add_executable(Vibestreamer ${SOURCES})
 
 target_include_directories(Vibestreamer PRIVATE src ${MPV_INCLUDE_DIRS})
 
+if(MPV_LIBRARY_DIRS)
+    target_link_directories(Vibestreamer PRIVATE ${MPV_LIBRARY_DIRS})
+endif()
+
 target_link_libraries(Vibestreamer PRIVATE
     Qt6::Core
     Qt6::Gui
