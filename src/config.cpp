@@ -10,6 +10,18 @@
 
 Config::Config()
 {
+    shortcuts.insert(QStringLiteral("play_pause"), QStringLiteral("Space"));
+    shortcuts.insert(QStringLiteral("fullscreen"), QStringLiteral("F11"));
+    shortcuts.insert(QStringLiteral("mute"),       QStringLiteral("M"));
+    shortcuts.insert(QStringLiteral("vol_up"),     QStringLiteral("Up"));
+    shortcuts.insert(QStringLiteral("vol_down"),   QStringLiteral("Down"));
+    shortcuts.insert(QStringLiteral("ch_next"),    QStringLiteral("N"));
+    shortcuts.insert(QStringLiteral("ch_prev"),    QStringLiteral("P"));
+    shortcuts.insert(QStringLiteral("info"),       QStringLiteral("I"));
+    shortcuts.insert(QStringLiteral("audio"),      QStringLiteral("A"));
+    shortcuts.insert(QStringLiteral("subs"),       QStringLiteral("S"));
+    shortcuts.insert(QStringLiteral("favorite"),   QStringLiteral("F"));
+
     load();
 }
 
@@ -53,6 +65,18 @@ void Config::load()
     for (const QJsonValue &v : root[u"favorites"].toArray())
         favorites.append(v.toString());
 
+    m_favoriteSet = QSet<QString>(favorites.begin(), favorites.end());
+
+    for (const QJsonValue &v : root[u"search_history"].toArray())
+        searchHistory.append(v.toString());
+
+    if (root.contains(u"shortcuts")) {
+        const QJsonObject shObj = root[u"shortcuts"].toObject();
+        for (auto it = shObj.constBegin(); it != shObj.constEnd(); ++it) {
+            shortcuts.insert(it.key(), it.value().toString());
+        }
+    }
+
     lastSourceId    = root[u"last_source_id"].toString();
     lastChannelUrl  = root[u"last_channel_url"].toString();
     volume          = root[u"volume"].toInt(100);
@@ -60,6 +84,7 @@ void Config::load()
     windowHeight    = root[u"window_height"].toInt(720);
     showEpg         = root[u"show_epg"].toBool(true);
     minimizeToTray  = root[u"minimize_to_tray"].toBool(false);
+    language        = root[u"language"].toString(QStringLiteral("tr"));
     recordPath      = root[u"record_path"].toString();
     themeMode       = root[u"theme_mode"].toInt(0);
     accentColor     = root[u"accent_color"].toString(QStringLiteral("#BB86FC"));
@@ -91,9 +116,20 @@ void Config::save()
     for (const QString &f : favorites)
         favArr.append(f);
 
+    QJsonArray histArr;
+    for (const QString &s : searchHistory)
+        histArr.append(s);
+
+    QJsonObject shObj;
+    for (auto it = shortcuts.constBegin(); it != shortcuts.constEnd(); ++it) {
+        shObj[it.key()] = it.value();
+    }
+
     QJsonObject root;
     root[u"sources"]          = srcArr;
     root[u"favorites"]        = favArr;
+    root[u"search_history"]   = histArr;
+    root[u"shortcuts"]        = shObj;
     root[u"last_source_id"]   = lastSourceId;
     root[u"last_channel_url"] = lastChannelUrl;
     root[u"volume"]           = volume;
@@ -101,6 +137,7 @@ void Config::save()
     root[u"window_height"]    = windowHeight;
     root[u"show_epg"]         = showEpg;
     root[u"minimize_to_tray"] = minimizeToTray;
+    root[u"language"]         = language;
     root[u"record_path"]      = recordPath;
     root[u"theme_mode"]       = themeMode;
     root[u"accent_color"]     = accentColor;
@@ -151,11 +188,13 @@ Source *Config::getSource(const QString &sourceId)
 
 bool Config::toggleFavorite(const QString &streamUrl)
 {
-    if (favorites.contains(streamUrl)) {
+    if (m_favoriteSet.contains(streamUrl)) {
+        m_favoriteSet.remove(streamUrl);
         favorites.removeAll(streamUrl);
         save();
         return false;
     }
+    m_favoriteSet.insert(streamUrl);
     favorites.append(streamUrl);
     save();
     return true;
@@ -163,5 +202,5 @@ bool Config::toggleFavorite(const QString &streamUrl)
 
 bool Config::isFavorite(const QString &streamUrl) const
 {
-    return favorites.contains(streamUrl);
+    return m_favoriteSet.contains(streamUrl);
 }

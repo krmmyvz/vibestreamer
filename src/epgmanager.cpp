@@ -9,6 +9,8 @@
 #include <QtConcurrent>
 #include <QFutureWatcher>
 
+#include <algorithm>
+
 #include <zlib.h>
 
 // ─── Gzip decompression ─────────────────────────────────────────────────────
@@ -54,38 +56,86 @@ EpgManager::EpgManager(QObject *parent)
     , m_nam(new QNetworkAccessManager(this))
 {}
 
-void EpgManager::load(const QString &url)
+void EpgManager::load(const QString &urlsStr)
 {
-    if (url.isEmpty()) return;
+    if (urlsStr.isEmpty()) return;
 
-    QNetworkRequest req{QUrl(url)};
-    req.setRawHeader("User-Agent", "XtreamPlayer/2.0");
-    req.setRawHeader("Accept-Encoding", "gzip, deflate");
-    req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                     QNetworkRequest::NoLessSafeRedirectPolicy);
-    req.setTransferTimeout(60000);
+    const int generation = ++m_loadGeneration;
 
-    QNetworkReply *reply = m_nam->get(req);
-    connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-        reply->deleteLater();
-        if (reply->error() != QNetworkReply::NoError) {
-            emit loadError(reply->errorString());
-            return;
+    const QStringList urls = urlsStr.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    if (urls.isEmpty()) return;
+
+    m_data.clear();
+    m_nameToId.clear();
+    m_channelIdByLower.clear();
+    m_pendingJobs = urls.size();
+
+    for (const QString &u : urls) {
+        const QString url = u.trimmed();
+        if (url.isEmpty()) {
+            if (--m_pendingJobs == 0) emit loaded();
+            continue;
         }
-        QByteArray raw = reply->readAll();
-        QByteArray xml = gzipDecompress(raw);
 
-        // Parse in a background thread to avoid blocking the UI
-        auto *watcher = new QFutureWatcher<ParseResult>(this);
-        connect(watcher, &QFutureWatcher<ParseResult>::finished, this, [this, watcher]() {
-            ParseResult result = watcher->result();
-            m_data     = std::move(result.data);
-            m_nameToId = std::move(result.nameToId);
-            watcher->deleteLater();
-            emit loaded();
+        QNetworkRequest req{QUrl(url)};
+        req.setRawHeader("User-Agent", "XtreamPlayer/2.0");
+        req.setRawHeader("Accept-Encoding", "gzip, deflate");
+        req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
+        req.setTransferTimeout(60000);
+
+        QNetworkReply *reply = m_nam->get(req);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, generation]() {
+            if (generation != m_loadGeneration) {
+                reply->deleteLater();
+                return;
+            }
+
+            if (reply->error() != QNetworkReply::NoError) {
+                reply->deleteLater();
+                if (--m_pendingJobs == 0) emit loaded();
+                return;
+            }
+            QByteArray raw = reply->readAll();
+            reply->deleteLater();
+
+            // Perform decompression AND parsing in a background thread
+            auto *watcher = new QFutureWatcher<ParseResult>(this);
+            connect(watcher, &QFutureWatcher<ParseResult>::finished, this, [this, watcher, generation]() {
+                if (generation != m_loadGeneration) {
+                    watcher->deleteLater();
+                    return;
+                }
+
+                ParseResult result = watcher->result();
+                
+                // Merge results
+                for (auto it = result.data.constBegin(); it != result.data.constEnd(); ++it) {
+                    m_data[it.key()].append(it.value());
+                }
+                for (auto it = result.nameToId.constBegin(); it != result.nameToId.constEnd(); ++it) {
+                    m_nameToId.insert(it.key(), it.value());
+                }
+                watcher->deleteLater();
+                if (--m_pendingJobs == 0) {
+                    for (auto it = m_data.begin(); it != m_data.end(); ++it) {
+                        auto &programs = it.value();
+                        std::sort(programs.begin(), programs.end(), [](const EpgProgram &a, const EpgProgram &b) {
+                            return a.startTs < b.startTs;
+                        });
+                        m_channelIdByLower.insert(it.key().toLower(), it.key());
+                    }
+                    emit loaded();
+                }
+            });
+            
+            // Run decompression and parsing in the background
+            watcher->setFuture(QtConcurrent::run([raw]() {
+                QByteArray xml = gzipDecompress(raw);
+                return parseXmltv(xml);
+            }));
         });
-        watcher->setFuture(QtConcurrent::run(&EpgManager::parseXmltv, xml));
-    });
+    }
 }
 
 // Parse an XMLTV timestamp: "20240101120000 +0000" → Unix
@@ -178,10 +228,8 @@ QString EpgManager::resolveChannelId(const QString &epgChannelId) const
 
     // 2. Case-insensitive match on data keys
     const QString lower = epgChannelId.toLower();
-    for (auto it = m_data.keyBegin(); it != m_data.keyEnd(); ++it) {
-        if (it->toLower() == lower)
-            return *it;
-    }
+    if (m_channelIdByLower.contains(lower))
+        return m_channelIdByLower.value(lower);
 
     // 3. Match by display name
     if (m_nameToId.contains(lower))
@@ -199,9 +247,23 @@ EpgProgram EpgManager::currentProgram(const QString &channelId) const
 {
     const QString resolved = resolveChannelId(channelId);
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    for (const EpgProgram &p : m_data.value(resolved))
-        if (p.startTs <= now && now < p.stopTs)
-            return p;
+    const QList<EpgProgram> &list = m_data.value(resolved);
+    if (list.isEmpty())
+        return {};
+
+    auto it = std::upper_bound(list.begin(), list.end(), now, [](qint64 value, const EpgProgram &program) {
+        return value < program.startTs;
+    });
+
+    if (it != list.begin()) {
+        const EpgProgram &candidate = *std::prev(it);
+        if (candidate.startTs <= now && now < candidate.stopTs)
+            return candidate;
+    }
+
+    if (it != list.end() && it->startTs <= now && now < it->stopTs)
+        return *it;
+
     return {};
 }
 
@@ -209,14 +271,15 @@ EpgProgram EpgManager::nextProgram(const QString &channelId) const
 {
     const QString resolved = resolveChannelId(channelId);
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    EpgProgram next;
-    next.startTs = std::numeric_limits<qint64>::max();
+    const QList<EpgProgram> &list = m_data.value(resolved);
+    if (list.isEmpty())
+        return {};
 
-    for (const EpgProgram &p : m_data.value(resolved))
-        if (p.startTs > now && p.startTs < next.startTs)
-            next = p;
+    auto it = std::upper_bound(list.begin(), list.end(), now, [](qint64 value, const EpgProgram &program) {
+        return value < program.startTs;
+    });
 
-    return next.startTs == std::numeric_limits<qint64>::max() ? EpgProgram{} : next;
+    return it == list.end() ? EpgProgram{} : *it;
 }
 
 QList<EpgProgram> EpgManager::programs(const QString &channelId) const

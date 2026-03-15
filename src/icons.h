@@ -134,6 +134,11 @@ inline QIcon record(const QColor &c = QColor(220,50,50)) {
     return fromSvgPath(QStringLiteral("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"), c);
 }
 
+inline QIcon stop(const QColor &c = QColor(220,50,50)) {
+    // A filled square for stop
+    return fromSvgPath(QStringLiteral("M6 6h12v12H6z"), c);
+}
+
 inline QIcon gridView(const QColor &c = QColor(200,200,210)) {
     // A 4-pane grid representation for multi-view
     return fromSvgPath(QStringLiteral("M4 4h6v6H4V4zm8 0h6v6h-6V4zm-8 8h6v6H4v-6zm8 0h6v6h-6v-6z"), c);

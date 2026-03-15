@@ -1,7 +1,7 @@
 #pragma once
 #include <QOpenGLWidget>
 #include <QString>
-#include <QTimer>
+#include <atomic>
 
 #include <mpv/client.h>
 #include <mpv/render_gl.h>
@@ -44,8 +44,11 @@ public:
     QString videoCodec() const;
     QString audioCodec() const;
 
-    // Pass extra options before first play
+    // Pass extra options before first play (only works pre-init, avoid after construction)
     void setOption(const QString &name, const QString &value);
+
+    // Set mpv property at runtime (works after init — use for hwdec, stream-record, etc.)
+    void setMpvProperty(const QString &name, const QString &value);
 
 signals:
     void durationChanged(double secs);
@@ -67,11 +70,13 @@ private slots:
 
 private:
     static void onMpvUpdate(void *ctx);
+    static void onMpvWakeup(void *ctx);
     void handleMpvEvent(mpv_event *event);
     void observeProperties();
 
     mpv_handle         *m_mpv   = nullptr;
     mpv_render_context *m_gl    = nullptr;
-    QTimer              m_eventTimer;
     bool                m_glReady = false;
+    std::atomic_bool    m_eventsQueued{false};
+    std::atomic_bool    m_renderQueued{false};
 };

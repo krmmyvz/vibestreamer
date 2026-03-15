@@ -2,6 +2,8 @@
 #include "models.h"
 #include <QList>
 #include <QString>
+#include <QMap>
+#include <QSet>
 
 class Config {
 public:
@@ -21,11 +23,14 @@ public:
     QStringList   favorites;
     QString       lastSourceId;
     QString       lastChannelUrl;
+    QStringList   searchHistory;
+    QMap<QString, QString> shortcuts;
     int           volume        = 100;
     int           windowWidth   = 1280;
     int           windowHeight  = 720;
     bool          showEpg       = true;
     bool          minimizeToTray = false;
+    QString       language      = QStringLiteral("tr"); // tr | en
     QString       recordPath;
     int           themeMode     = 0; // 0: Dark, 1: Light
     QString       accentColor   = QStringLiteral("#BB86FC");
@@ -37,4 +42,6 @@ public:
 private:
     void load();
     QString configFilePath() const;
+
+    QSet<QString> m_favoriteSet;
 };

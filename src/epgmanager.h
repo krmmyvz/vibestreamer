@@ -40,4 +40,7 @@ private:
     QNetworkAccessManager              *m_nam;
     QHash<QString, QList<EpgProgram>>   m_data;         // channelId → programs
     QHash<QString, QString>             m_nameToId;     // display-name (lower) → channelId
+    QHash<QString, QString>             m_channelIdByLower;
+    int                                 m_pendingJobs = 0;
+    int                                 m_loadGeneration = 0;
 };

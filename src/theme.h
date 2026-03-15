@@ -1,27 +1,195 @@
 #pragma once
+#include <QColor>
 #include <QString>
 #include "config.h"
 
+// ─── Design Token System ────────────────────────────────────────────────────
+// All semantic colors live here. No hardcoded hex values outside this file.
+
+struct ThemeColors {
+    // ── Surface ──
+    QString bgWindow;          // Main window background
+    QString bgPanel;           // Panel / card background
+    QString bgSurface;         // Elevated surface (control bar, overlays)
+    QString bgSurfaceAlpha;    // Semi-transparent surface (PiP overlay)
+    QString bgInput;           // Text input background
+
+    // ── Sidebar ──
+    QString sidebarGradStart;  // Sidebar gradient top
+    QString sidebarGradEnd;    // Sidebar gradient bottom
+    QString sidebarBorder;     // Sidebar right border
+
+    // ── Text ──
+    QString textPrimary;       // Main body text
+    QString textSecondary;     // Muted / secondary text
+    QString textDimmed;        // Very dimmed text (section headers)
+    QString textOnAccent;      // Text on accent-colored backgrounds
+
+    // ── Accent ──
+    QString accent;            // Primary accent color
+    QString accentAlpha;       // Accent with transparency (pressed states)
+    QString accentSelectedBg;  // List item selected background
+
+    // ── Semantic ──
+    QString success;           // Green / teal (add button, progress)
+    QString error;             // Red (delete, error, live badge)
+    QString errorAlpha;        // Red with alpha (live badge bg, recording)
+    QString warning;           // Gold (favorites)
+
+    // ── Borders & Separators ──
+    QString border;            // Standard border
+    QString borderSubtle;      // Very subtle border / separator
+    QString separator;         // Control bar separators
+
+    // ── Interactive ──
+    QString hoverBg;           // Hover background
+    QString pressedBg;         // Pressed background (uses accent alpha)
+
+    // ── Scrollbar ──
+    QString scrollBg;
+    QString scrollHover;
+
+    // ── Status Bar ──
+    QString statusBarBg;
+
+    // ── EPG ──
+    QString epgProgressBg;     // EPG progress bar background
+    QString epgProgressChunk;  // EPG progress bar fill
+
+    // ── Icon default color ──
+    QColor iconDefault;        // Default icon tint
+    QColor iconAccent;         // Accent-tinted icons (play button)
+    QColor iconMuted;          // Muted icons (volume)
+    QColor iconSuccess;        // Success-colored icons (add)
+    QColor iconError;          // Error-colored icons (delete, record active)
+    QColor iconRecord;         // Record icon default
+    QColor iconFavActive;      // Favorite star when active
+};
+
 class Theme {
 public:
+    // Helper: convert a hex color to rgba() string with given alpha (0.0–1.0)
+    static QString toRgba(const QString &hex, double alpha)
+    {
+        const QColor c(hex);
+        return QStringLiteral("rgba(%1,%2,%3,%4)")
+            .arg(c.red()).arg(c.green()).arg(c.blue())
+            .arg(alpha, 0, 'f', 2);
+    }
+
+    // Build the full token palette from config
+    static ThemeColors colors(const Config &config)
+    {
+        const bool isLight = (config.themeMode == 1);
+        const QString accent = config.accentColor.isEmpty()
+            ? QStringLiteral("#BB86FC") : config.accentColor;
+
+        ThemeColors t;
+
+        // ── Accent-derived (shared by both themes) ──
+        t.accent          = accent;
+        t.iconAccent      = QColor(accent);
+        t.iconFavActive   = QColor(accent);
+
+        if (isLight) {
+            // ── Light Theme ──
+            t.bgWindow        = QStringLiteral("#F5F5F5");
+            t.bgPanel         = QStringLiteral("#FFFFFF");
+            t.bgSurface       = QStringLiteral("rgba(245,245,245,0.95)");
+            t.bgSurfaceAlpha  = QStringLiteral("rgba(0,0,0,0.45)");
+            t.bgInput         = QStringLiteral("#FFFFFF");
+
+            t.sidebarGradStart = QStringLiteral("#F0F0F4");
+            t.sidebarGradEnd   = QStringLiteral("#E8E8EE");
+            t.sidebarBorder    = QStringLiteral("rgba(0,0,0,0.08)");
+
+            t.textPrimary     = QStringLiteral("#111111");
+            t.textSecondary   = QStringLiteral("#666666");
+            t.textDimmed      = QStringLiteral("rgba(0,0,0,0.35)");
+            t.textOnAccent    = QStringLiteral("#FFFFFF");
+
+            t.accentAlpha     = toRgba(accent, 0.30);
+            t.accentSelectedBg = toRgba(accent, 0.18);
+
+            t.success         = QStringLiteral("#03DAC6");
+            t.error           = QStringLiteral("#D32F2F");
+            t.errorAlpha      = QStringLiteral("rgba(211,47,47,0.12)");
+            t.warning         = QStringLiteral("#F9A825");
+
+            t.border          = QStringLiteral("#DDDDDD");
+            t.borderSubtle    = QStringLiteral("rgba(0,0,0,0.06)");
+            t.separator       = QStringLiteral("rgba(0,0,0,0.1)");
+
+            t.hoverBg         = QStringLiteral("rgba(0,0,0,0.06)");
+            t.pressedBg       = toRgba(accent, 0.20);
+
+            t.scrollBg        = QStringLiteral("#E0E0E0");
+            t.scrollHover     = QStringLiteral("#CCCCCC");
+
+            t.statusBarBg     = QStringLiteral("#EEEEEE");
+
+            t.epgProgressBg   = QStringLiteral("#E0E0E0");
+            t.epgProgressChunk = QStringLiteral("#6366f1");
+
+            t.iconDefault     = QColor(80, 80, 100);
+            t.iconMuted       = QColor(120, 120, 140);
+            t.iconSuccess     = QColor(0, 180, 160);
+            t.iconError       = QColor(211, 47, 47);
+            t.iconRecord      = QColor(211, 47, 47);
+        } else {
+            // ── Dark Theme ──
+            t.bgWindow        = QStringLiteral("#121218");
+            t.bgPanel         = QStringLiteral("#1E1E24");
+            t.bgSurface       = QStringLiteral("rgba(18,18,24,0.95)");
+            t.bgSurfaceAlpha  = QStringLiteral("rgba(0,0,0,0.55)");
+            t.bgInput         = QStringLiteral("rgba(255,255,255,0.05)");
+
+            t.sidebarGradStart = QStringLiteral("#16161e");
+            t.sidebarGradEnd   = QStringLiteral("#101018");
+            t.sidebarBorder    = QStringLiteral("rgba(255,255,255,0.04)");
+
+            t.textPrimary     = QStringLiteral("#E0E0E0");
+            t.textSecondary   = QStringLiteral("#8888AA");
+            t.textDimmed      = QStringLiteral("rgba(255,255,255,0.35)");
+            t.textOnAccent    = QStringLiteral("#121218");
+
+            t.accentAlpha     = toRgba(accent, 0.30);
+            t.accentSelectedBg = toRgba(accent, 0.15);
+
+            t.success         = QStringLiteral("#03DAC6");
+            t.error           = QStringLiteral("#ff5555");
+            t.errorAlpha      = QStringLiteral("rgba(255,68,68,0.15)");
+            t.warning         = QStringLiteral("#FFD700");
+
+            t.border          = QStringLiteral("rgba(255,255,255,0.05)");
+            t.borderSubtle    = QStringLiteral("rgba(255,255,255,0.06)");
+            t.separator       = QStringLiteral("rgba(255,255,255,0.1)");
+
+            t.hoverBg         = QStringLiteral("rgba(255,255,255,0.1)");
+            t.pressedBg       = toRgba(accent, 0.30);
+
+            t.scrollBg        = QStringLiteral("#333340");
+            t.scrollHover     = QStringLiteral("#555566");
+
+            t.statusBarBg     = QStringLiteral("#121212");
+
+            t.epgProgressBg   = QStringLiteral("#2a2a35");
+            t.epgProgressChunk = QStringLiteral("#6366f1");
+
+            t.iconDefault     = QColor(200, 200, 210);
+            t.iconMuted       = QColor(150, 150, 170);
+            t.iconSuccess     = QColor(3, 218, 198);
+            t.iconError       = QColor(255, 85, 85);
+            t.iconRecord      = QColor(220, 50, 50);
+        }
+
+        return t;
+    }
+
+    // Generate QSS stylesheet from tokens
     static QString style(const Config &config)
     {
-        // 0: Dark, 1: Light
-        const bool isLight = (config.themeMode == 1);
-        const QString accent = config.accentColor.isEmpty() ? QStringLiteral("#BB86FC") : config.accentColor;
-        
-        // Base Colors
-        const QString bgWindow   = isLight ? QStringLiteral("#F5F5F5") : QStringLiteral("#121218");
-        const QString bgPanel    = isLight ? QStringLiteral("#FFFFFF") : QStringLiteral("#1E1E24");
-        const QString textMain   = isLight ? QStringLiteral("#111111") : QStringLiteral("#E0E0E0");
-        const QString textMuted  = isLight ? QStringLiteral("#666666") : QStringLiteral("#8888AA");
-        const QString borderLine = isLight ? QStringLiteral("#DDDDDD") : QStringLiteral("rgba(255,255,255,0.05)");
-        const QString bgInput    = isLight ? QStringLiteral("#FFFFFF") : QStringLiteral("rgba(255, 255, 255, 0.05)");
-        const QString itemHover  = isLight ? QStringLiteral("#E0E0E0") : QStringLiteral("rgba(255, 255, 255, 0.05)");
-        const QString itemSelectedBg = isLight ? accent + "33" : accent + "26"; // add alpha hex
-        const QString scrollBg   = isLight ? QStringLiteral("#E0E0E0") : QStringLiteral("#333340");
-        const QString scrollHover= isLight ? QStringLiteral("#CCCCCC") : QStringLiteral("#555566");
-        const QString statusBarBg= isLight ? QStringLiteral("#EEEEEE") : QStringLiteral("#121212");
+        const ThemeColors t = colors(config);
 
         return QStringLiteral(R"(
             QMainWindow {
@@ -38,7 +206,7 @@ public:
                 border: none;
                 background: %1;
                 width: 10px;
-                margin: 0px 0px 0px 0px;
+                margin: 0px;
             }
             QScrollBar::handle:vertical {
                 background: %9;
@@ -54,7 +222,7 @@ public:
                 border: none;
                 background: %1;
                 height: 10px;
-                margin: 0px 0px 0px 0px;
+                margin: 0px;
             }
             QScrollBar::handle:horizontal {
                 background: %9;
@@ -83,8 +251,9 @@ public:
             }
             QListWidget::item:selected {
                 background-color: %8;
-                color: %3;
+                color: %2;
                 font-weight: bold;
+                border-left: 3px solid %3;
             }
 
             /* ─── Tabs ─── */
@@ -136,7 +305,7 @@ public:
                 color: %1;
             }
 
-            /* ─── Sidebar (Glass Effect) ─── */
+            /* ─── Sidebar ─── */
             QWidget#sidebar {
                 background-color: %1;
                 border-right: 1px solid %5;
@@ -177,15 +346,14 @@ public:
                 background-color: %3;
                 color: %1;
             }
-            
-            /* Primary Action Button (if any needed) */
+
             QPushButton#primaryBtn {
                 background-color: %3;
                 color: %1;
                 border: none;
             }
             QPushButton#primaryBtn:hover {
-                background-color: %3; 
+                background-color: %3;
             }
 
             /* ─── Progress Bar ─── */
@@ -199,7 +367,7 @@ public:
                 border-radius: 2px;
             }
 
-             /* ─── Status Bar ─── */
+            /* ─── Status Bar ─── */
             QStatusBar {
                 background: %11;
                 color: %4;
@@ -207,16 +375,16 @@ public:
             }
 
         )")
-        .arg(bgWindow)       // %1
-        .arg(textMain)       // %2
-        .arg(accent)         // %3
-        .arg(textMuted)      // %4
-        .arg(borderLine)     // %5
-        .arg(bgInput)        // %6
-        .arg(itemHover)      // %7
-        .arg(itemSelectedBg) // %8
-        .arg(scrollBg)       // %9
-        .arg(scrollHover)    // %10
-        .arg(statusBarBg);   // %11
+        .arg(t.bgWindow)          // %1
+        .arg(t.textPrimary)       // %2
+        .arg(t.accent)            // %3
+        .arg(t.textSecondary)     // %4
+        .arg(t.border)            // %5
+        .arg(t.bgInput)           // %6
+        .arg(t.hoverBg)           // %7
+        .arg(t.accentSelectedBg)  // %8
+        .arg(t.scrollBg)          // %9
+        .arg(t.scrollHover)       // %10
+        .arg(t.statusBarBg);      // %11
     }
 };

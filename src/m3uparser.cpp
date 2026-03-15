@@ -1,27 +1,41 @@
 #include "m3uparser.h"
 
-#include <QRegularExpression>
-#include <QStringList>
+#include <QStringView>
 
 // Extract a named attribute value from an #EXTINF line
 static QString attr(const QString &line, const QString &key)
 {
-    const QRegularExpression re(key + QStringLiteral(R"(="([^"]*"))"));
-    const auto m = re.match(line);
-    return m.hasMatch() ? m.captured(1) : QString{};
+    const QString marker = key + QStringLiteral("=\"");
+    const int start = line.indexOf(marker);
+    if (start < 0)
+        return {};
+
+    const int valueStart = start + marker.size();
+    const int valueEnd = line.indexOf(QLatin1Char('"'), valueStart);
+    if (valueEnd < 0 || valueEnd <= valueStart)
+        return {};
+
+    return line.mid(valueStart, valueEnd - valueStart);
 }
 
 M3UParser::Result M3UParser::parse(const QString &text, const QString &sourceId)
 {
     Result res;
-    const QStringList lines = text.split(QLatin1Char('\n'));
 
     Channel pending;
     bool hasPending = false;
     int  idx        = 0;
 
-    for (QString line : lines) {
-        line = line.trimmed();
+    int start = 0;
+    const int length = text.size();
+    while (start <= length) {
+        int end = text.indexOf(QLatin1Char('\n'), start);
+        if (end < 0)
+            end = length;
+
+        QString line = QStringView(text).mid(start, end - start).trimmed().toString();
+        start = end + 1;
+
         if (line.isEmpty()) continue;
 
         if (line.startsWith(QStringLiteral("#EXTM3U"))) {

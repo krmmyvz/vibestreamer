@@ -62,6 +62,7 @@ set(SOURCES
     src/sourcedialog.cpp
     src/settingsdialog.cpp
     src/multiviewdialog.cpp
+    src/imagecache.cpp
 )
 
 qt_add_executable(XtreamPlayer ${SOURCES})

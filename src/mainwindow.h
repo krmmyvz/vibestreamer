@@ -2,6 +2,7 @@
 #include "config.h"
 #include "epgmanager.h"
 #include "models.h"
+#include "theme.h"
 
 #include <QHash>
 #include <QLabel>
@@ -15,6 +16,8 @@
 #include <QComboBox>
 #include <QProgressBar>
 #include <QSystemTrayIcon>
+#include <QCompleter>
+#include <QStringListModel>
 
 class MpvWidget;
 class XtreamClient;
@@ -60,6 +63,9 @@ private slots:
     void onToggleEpg();
     void onSpeedChanged(int index);
     void onToggleRecord();
+    void onRecordPauseResume();
+    void onRecordStop();
+    void onViewModeChanged(int index);
 
     // New player controls
     void onSkipBack();
@@ -86,6 +92,8 @@ private:
     void setupPlayerPanel();
     void setupControlBar();
     void applyTheme();
+    void applyInlineStyles();
+    void retranslateUi();
     void setupShortcuts();
 
     void loadSourceList();
@@ -99,6 +107,7 @@ private:
     void updateFavoriteButton(const Channel &ch);
     QString formatTime(double secs) const;
     void updateStyle();
+    QString t(const QString &tr, const QString &en) const;
 
     // ── Cache key helpers ──────────────────────────────────────────────
     struct CacheKey {
@@ -117,6 +126,7 @@ private:
 
     // ── State ──────────────────────────────────────────────────────────
     Config          m_config;
+    ThemeColors     m_theme;
     EpgManager     *m_epg;
     XtreamClient   *m_client = nullptr;
 
@@ -130,6 +140,9 @@ private:
     bool            m_resumePending   = true;   // try to resume lastChannelUrl on first load
     bool            m_pipMode    = false;
     bool            m_isRecording = false;
+    bool            m_recordPaused = false;
+    QString         m_recordFilePath;    // current recording file path
+    int             m_recordSegment = 0; // segment counter for pause/resume
     QList<int>      m_savedSplitterSizes;
 
     QProgressBar   *m_loadingProgress = nullptr;
@@ -138,6 +151,8 @@ private:
     QHash<CacheKey, QList<Channel>>   m_channelCache;
     // Cache: sourceId → parsed M3U channels (all types)
     QHash<QString, QList<Channel>>    m_m3uCache;
+    // Logo URL → list widget row indices (for O(1) icon update)
+    QHash<QString, QList<int>>        m_logoUrlToRows;
 
     // ── Widgets ────────────────────────────────────────────────────────
     QSplitter      *m_mainSplitter;
@@ -145,9 +160,16 @@ private:
     // Sidebar
     QWidget        *m_sidebar;
     QComboBox      *m_sourceCombo;
+    QToolButton    *m_addSourceBtn = nullptr;
+    QToolButton    *m_editSourceBtn = nullptr;
+    QToolButton    *m_delSourceBtn = nullptr;
     QTabWidget     *m_typeTab;
     QListWidget    *m_categoryList;
+    QLabel         *m_channelHeaderLabel = nullptr;
     QLineEdit      *m_searchEdit;
+    QCompleter     *m_searchCompleter = nullptr;
+    QStringListModel *m_searchModel = nullptr;
+    QComboBox      *m_viewModeCombo;
     QListWidget    *m_channelList;
 
     // Player panel
@@ -172,6 +194,8 @@ private:
     QToolButton    *m_fullscreenBtn;
     QToolButton    *m_favoriteBtn;
     QToolButton    *m_recordBtn;
+    QToolButton    *m_recordPauseBtn = nullptr;
+    QToolButton    *m_recordStopBtn  = nullptr;
     QToolButton    *m_multiViewBtn;
     QToolButton    *m_epgToggleBtn;
 

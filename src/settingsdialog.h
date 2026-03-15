@@ -6,6 +6,8 @@
 #include <QLineEdit>
 #include <QSlider>
 #include <QCheckBox>
+#include <QKeySequenceEdit>
+#include <QMap>
 
 class SettingsDialog : public QDialog {
     Q_OBJECT
@@ -17,6 +19,7 @@ private slots:
     void onBrowseRecordPath();
 
 private:
+    QComboBox  *m_languageCombo;
     QComboBox  *m_hwDecodeCombo;
     QLineEdit  *m_extraArgsEdit;
     QLineEdit  *m_recordPathEdit;
@@ -26,4 +29,7 @@ private:
     // Theme
     QComboBox  *m_themeModeCombo;
     QLineEdit  *m_accentColorEdit;
+
+    // Shortcuts
+    QMap<QString, QKeySequenceEdit*> m_shortcutEdits;
 };

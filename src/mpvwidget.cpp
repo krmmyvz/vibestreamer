@@ -3,6 +3,7 @@
 
 #include <QMouseEvent>
 #include <QOpenGLContext>
+#include <QOpenGLFunctions>
 #include <stdexcept>
 
 // ─── OpenGL proc-address helper ──────────────────────────────────────────────
@@ -24,22 +25,19 @@ MpvWidget::MpvWidget(QWidget *parent)
         throw std::runtime_error("Failed to create mpv context");
 
     // Basic options
-    mpv_set_option_string(m_mpv, "terminal",    "no");
+    mpv_set_option_string(m_mpv, "terminal",    "yes");
     mpv_set_option_string(m_mpv, "msg-level",   "all=v");
     mpv_set_option_string(m_mpv, "vo",           "libmpv");
-    mpv_set_option_string(m_mpv, "hwdec",        "auto-safe");
+    mpv_set_option_string(m_mpv, "hwdec",        "no"); // Force software decoding to test OpenGL pipeline
     mpv_set_option_string(m_mpv, "cache",        "yes");
     mpv_set_option_string(m_mpv, "cache-secs",   "30");
 
     if (mpv_initialize(m_mpv) < 0)
         throw std::runtime_error("Failed to initialize mpv");
 
-    observeProperties();
+    mpv_set_wakeup_callback(m_mpv, MpvWidget::onMpvWakeup, this);
 
-    // Drive event delivery via a lightweight timer
-    m_eventTimer.setInterval(16);   // ~60 fps polling
-    connect(&m_eventTimer, &QTimer::timeout, this, &MpvWidget::onMpvEvents);
-    m_eventTimer.start();
+    observeProperties();
 
     setAttribute(Qt::WA_OpaquePaintEvent);
     setMinimumSize(320, 180);
@@ -55,6 +53,7 @@ MpvWidget::~MpvWidget()
     doneCurrent();
 
     if (m_mpv) {
+        mpv_set_wakeup_callback(m_mpv, nullptr, nullptr);
         mpv_terminate_destroy(m_mpv);
         m_mpv = nullptr;
     }
@@ -67,11 +66,9 @@ void MpvWidget::initializeGL()
     mpv_opengl_init_params glParams{};
     glParams.get_proc_address = getProcAddress;
 
-    const int advanced = 1;
     mpv_render_param params[] = {
         {MPV_RENDER_PARAM_API_TYPE,        const_cast<char *>(MPV_RENDER_API_TYPE_OPENGL)},
         {MPV_RENDER_PARAM_OPENGL_INIT_PARAMS, &glParams},
-        {MPV_RENDER_PARAM_ADVANCED_CONTROL, const_cast<int *>(&advanced)},
         {MPV_RENDER_PARAM_INVALID,          nullptr}
     };
 
@@ -85,6 +82,15 @@ void MpvWidget::initializeGL()
 void MpvWidget::paintGL()
 {
     if (!m_glReady || !m_gl) return;
+
+    // Clear any pending OpenGL errors from Qt setup. libmpv's texture 
+    // creation relies on glGetError() and will abort if Qt left an error.
+    if (auto *ctx = QOpenGLContext::currentContext()) {
+        auto *funcs = ctx->functions();
+        while (funcs->glGetError() != 0 /* GL_NO_ERROR */) {
+            // spin
+        }
+    }
 
     const qreal dpr = devicePixelRatio();
     mpv_opengl_fbo fbo{};
@@ -112,9 +118,33 @@ void MpvWidget::resizeGL(int /*w*/, int /*h*/)
 
 void MpvWidget::onMpvUpdate(void *ctx)
 {
-    // Schedule repaint on the GUI thread
-    QMetaObject::invokeMethod(static_cast<MpvWidget *>(ctx),
-                              "update", Qt::QueuedConnection);
+    auto *self = static_cast<MpvWidget *>(ctx);
+    if (!self || !self->m_glReady || !self->m_gl)
+        return;
+
+    if (self->m_renderQueued.exchange(true))
+        return;
+
+    QMetaObject::invokeMethod(self, [self]() {
+        self->m_renderQueued = false;
+        if (self->m_glReady && self->m_gl)
+            self->update();
+    }, Qt::QueuedConnection);
+}
+
+void MpvWidget::onMpvWakeup(void *ctx)
+{
+    auto *self = static_cast<MpvWidget *>(ctx);
+    if (!self)
+        return;
+
+    if (self->m_eventsQueued.exchange(true))
+        return;
+
+    QMetaObject::invokeMethod(self, [self]() {
+        self->m_eventsQueued = false;
+        self->onMpvEvents();
+    }, Qt::QueuedConnection);
 }
 
 // ─── Event handling ──────────────────────────────────────────────────────────
@@ -126,6 +156,7 @@ void MpvWidget::observeProperties()
     mpv_observe_property(m_mpv, 0, "pause",        MPV_FORMAT_FLAG);
     mpv_observe_property(m_mpv, 0, "core-idle",    MPV_FORMAT_FLAG);
     mpv_observe_property(m_mpv, 0, "track-list/count", MPV_FORMAT_INT64);
+    mpv_observe_property(m_mpv, 0, "volume",       MPV_FORMAT_DOUBLE);
 }
 
 void MpvWidget::onMpvEvents()
@@ -156,14 +187,16 @@ void MpvWidget::handleMpvEvent(mpv_event *event)
         const auto *prop = static_cast<mpv_event_property *>(event->data);
         if (prop->format == MPV_FORMAT_DOUBLE) {
             const double val = *static_cast<double *>(prop->data);
-            if (QLatin1String(prop->name) == QLatin1String("duration"))
+            if (QLatin1String(prop->name) == QLatin1String("duration")) {
                 emit durationChanged(val);
-            else if (QLatin1String(prop->name) == QLatin1String("time-pos"))
+            } else if (QLatin1String(prop->name) == QLatin1String("time-pos")) {
                 emit positionChanged(val);
+            }
         } else if (prop->format == MPV_FORMAT_FLAG) {
             const int val = *static_cast<int *>(prop->data);
-            if (QLatin1String(prop->name) == QLatin1String("pause"))
+            if (QLatin1String(prop->name) == QLatin1String("pause")) {
                 emit pauseChanged(val != 0);
+            }
         } else if (prop->format == MPV_FORMAT_INT64) {
             if (QLatin1String(prop->name) == QLatin1String("track-list/count"))
                 emit trackListChanged();
@@ -247,6 +280,14 @@ void MpvWidget::setOption(const QString &name, const QString &value)
 {
     mpv_set_option_string(m_mpv, name.toUtf8().constData(),
                           value.toUtf8().constData());
+}
+
+void MpvWidget::setMpvProperty(const QString &name, const QString &value)
+{
+    // Avoid mpv_set_property_async since its string lifetimes are tricky, 
+    // and mpv_command_async might be triggering weird internal state.
+    // Given these properties are applied BEFORE play(), synchronous call is completely safe.
+    mpv_set_property_string(m_mpv, name.toUtf8().constData(), value.toUtf8().constData());
 }
 
 // ─── Track list & media info ─────────────────────────────────────────────────

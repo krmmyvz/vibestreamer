@@ -66,6 +66,7 @@ static QList<Category> parseCategories(const QByteArray &data,
 {
     QList<Category> list;
     const QJsonArray arr = QJsonDocument::fromJson(data).array();
+    list.reserve(arr.size());
     for (const QJsonValue &v : arr) {
         const QJsonObject o = v.toObject();
         Category cat;
@@ -121,7 +122,9 @@ void XtreamClient::getLiveStreams(const QString &categoryId,
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }
         QList<Channel> list;
-        for (const QJsonValue &v : QJsonDocument::fromJson(data).array()) {
+        const QJsonArray arr = QJsonDocument::fromJson(data).array();
+        list.reserve(arr.size());
+        for (const QJsonValue &v : arr) {
             const QJsonObject o = v.toObject();
             const QString sid   = o[u"stream_id"].toVariant().toString();
             Channel ch;
@@ -153,7 +156,9 @@ void XtreamClient::getVodStreams(const QString &categoryId,
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }
         QList<Channel> list;
-        for (const QJsonValue &v : QJsonDocument::fromJson(data).array()) {
+        const QJsonArray arr = QJsonDocument::fromJson(data).array();
+        list.reserve(arr.size());
+        for (const QJsonValue &v : arr) {
             const QJsonObject o = v.toObject();
             const QString sid   = o[u"stream_id"].toVariant().toString();
             const QString ext   = o[u"container_extension"].toString(QStringLiteral("mp4"));
@@ -194,7 +199,9 @@ void XtreamClient::getSeries(const QString &categoryId,
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }
         QList<Channel> list;
-        for (const QJsonValue &v : QJsonDocument::fromJson(data).array()) {
+        const QJsonArray arr = QJsonDocument::fromJson(data).array();
+        list.reserve(arr.size());
+        for (const QJsonValue &v : arr) {
             const QJsonObject o = v.toObject();
             const QString sid   = o[u"series_id"].toVariant().toString();
             Channel ch;
