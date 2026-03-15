@@ -96,15 +96,21 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: |
-          brew install mpv qt cmake ninja
+        run: brew install mpv cmake ninja
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: "6.7.0"
+          host: mac
+          target: desktop
+          modules: "qtmultimedia qtimageformats"
 
       - name: Configure
         run: |
           cmake -B build \
             -DCMAKE_BUILD_TYPE=Release \
-            -GNinja \
-            -DCMAKE_PREFIX_PATH="$(brew --prefix qt)"
+            -GNinja
 
       - name: Build
         run: cmake --build build --parallel
@@ -133,7 +139,7 @@ jobs:
           </plist>
           EOF
 
-          "$(brew --prefix qt)/bin/macdeployqt" "$APP_DIR" -dmg 2>&1 || true
+          macdeployqt "$APP_DIR" -dmg 2>&1 || true
 
           if [ -f "build/Vibestreamer.dmg" ]; then
             mv build/Vibestreamer.dmg Vibestreamer-macOS-arm64.dmg
@@ -169,7 +175,7 @@ jobs:
         shell: pwsh
         run: |
           # Download mpv dev package from shinchiro's builds
-          $mpvUrl = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20240901/mpv-dev-x86_64-20240901-git-45495ac.7z"
+          $mpvUrl = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-dev-x86_64-20260307-git-f9190e5.7z"
           Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
           7z x mpv-dev.7z -ompv-dev
 
