@@ -1,3 +1,0 @@
-# Hashes of file build rules.
-23ed818614b948b5d6d9b9bfff2b5625 CMakeFiles/XtreamPlayer_autogen
-4b54ebf9aec378bce6ae2a00a4c968c5 XtreamPlayer_autogen/timestamp

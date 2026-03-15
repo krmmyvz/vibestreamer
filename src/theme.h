@@ -192,13 +192,29 @@ public:
         const ThemeColors t = colors(config);
 
         return QStringLiteral(R"(
-            QMainWindow {
+            QMainWindow, QDialog {
                 background-color: %1;
             }
             QWidget {
                 color: %2;
                 font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
                 font-size: 13px;
+            }
+            QMenuBar {
+                background-color: %1;
+                color: %2;
+                border-bottom: 1px solid %5;
+            }
+            QMenuBar::item {
+                background: transparent;
+                padding: 4px 10px;
+            }
+            QMenuBar::item:selected {
+                background: %7;
+            }
+            QMenuBar::item:pressed {
+                background: %8;
+                color: %2;
             }
 
             /* ─── Scrollbars ─── */

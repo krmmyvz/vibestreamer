@@ -220,6 +220,37 @@ void MainWindow::applyInlineStyles()
         m_controlBar->setStyleSheet(QStringLiteral(
             "QWidget#controlBar { background: %1; border-top: 1px solid %2; }")
             .arg(m_theme.bgSurface, m_theme.borderSubtle));
+
+        const QString btnStyle = QStringLiteral(
+            "QToolButton { border-radius: 4px; padding: 0px; border: none; background: transparent; }"
+            "QToolButton:hover { background: %1; }"
+            "QToolButton:pressed { background: %2; }").arg(m_theme.hoverBg, m_theme.pressedBg);
+            
+        auto applyBtnStyle = [&](QToolButton* btn) {
+            if (btn) btn->setStyleSheet(btnStyle);
+        };
+        applyBtnStyle(m_prevChBtn);
+        applyBtnStyle(m_skipBackBtn);
+        applyBtnStyle(m_playPauseBtn);
+        applyBtnStyle(m_skipFwdBtn);
+        applyBtnStyle(m_recordBtn);
+        applyBtnStyle(m_recordPauseBtn);
+        applyBtnStyle(m_recordStopBtn);
+        applyBtnStyle(m_nextChBtn);
+        applyBtnStyle(m_audioBtn);
+        applyBtnStyle(m_subBtn);
+        applyBtnStyle(m_infoBtn);
+        applyBtnStyle(m_favoriteBtn);
+        applyBtnStyle(m_multiViewBtn);
+        applyBtnStyle(m_epgToggleBtn);
+        applyBtnStyle(m_pipBtn);
+        applyBtnStyle(m_fullscreenBtn);
+        
+        for (auto *frame : m_controlBar->findChildren<QFrame *>()) {
+            if (frame->frameShape() == QFrame::VLine) {
+                frame->setStyleSheet(QStringLiteral("background: %1;").arg(m_theme.separator));
+            }
+        }
     }
 
     // Time / live labels
@@ -242,16 +273,60 @@ void MainWindow::applyInlineStyles()
             "QProgressBar::chunk { background-color: %2; }")
             .arg(m_theme.epgProgressBg, m_theme.epgProgressChunk));
 
-    // Play button icon
+    // Icons
     if (m_playPauseBtn && m_mpv)
         m_playPauseBtn->setIcon(m_mpv->isPaused()
             ? Icons::play(m_theme.iconAccent) : Icons::pause(m_theme.iconAccent));
-
-    // Favorite button
     if (m_favoriteBtn)
         m_favoriteBtn->setIcon(m_currentChannel.isFavorite
             ? Icons::starFilled(m_theme.iconFavActive)
             : Icons::starOutline(m_theme.iconDefault));
+
+    if (m_prevChBtn)    m_prevChBtn->setIcon(Icons::skipPrevious(m_theme.iconDefault));
+    if (m_skipBackBtn)  m_skipBackBtn->setIcon(Icons::rewind(m_theme.iconDefault));
+    if (m_skipFwdBtn)   m_skipFwdBtn->setIcon(Icons::fastForward(m_theme.iconDefault));
+    if (m_nextChBtn)    m_nextChBtn->setIcon(Icons::skipNext(m_theme.iconDefault));
+
+    bool isRecording = !m_recordFilePath.isEmpty();
+    if (m_recordBtn) {
+        if (isRecording) {
+            m_recordBtn->setIcon(m_recordPaused ? Icons::record(m_theme.iconRecord) : Icons::record(m_theme.iconError));
+        } else {
+            m_recordBtn->setIcon(Icons::record(m_theme.iconRecord));
+        }
+    }
+    if (m_recordPauseBtn) m_recordPauseBtn->setIcon(m_recordPaused ? Icons::play(m_theme.iconAccent) : Icons::pause(m_theme.iconDefault));
+    if (m_recordStopBtn)  m_recordStopBtn->setIcon(Icons::stop(m_theme.iconError));
+
+    if (m_audioBtn)       m_audioBtn->setIcon(Icons::audioTrack(m_theme.iconDefault));
+    if (m_subBtn)         m_subBtn->setIcon(Icons::closedCaption(m_theme.iconDefault));
+    if (m_infoBtn)        m_infoBtn->setIcon(Icons::info(m_theme.iconDefault));
+            
+    if (m_multiViewBtn)   m_multiViewBtn->setIcon(Icons::gridView(m_theme.iconDefault));
+    if (m_epgToggleBtn)   m_epgToggleBtn->setIcon(Icons::tvGuide(m_theme.iconDefault));
+    if (m_pipBtn)         m_pipBtn->setIcon(Icons::pictureInPicture(m_theme.iconDefault));
+    if (m_fullscreenBtn)  m_fullscreenBtn->setIcon(Icons::fullscreen(m_theme.iconDefault));
+
+    if (m_volIcon)        m_volIcon->setIcon(Icons::volumeUp(m_theme.iconMuted));
+
+    // Source panel buttons
+    const QString srcBtnStyle = QStringLiteral(
+        "QToolButton { border: none; border-radius: 4px; background: transparent; }"
+        "QToolButton:hover { background: %1; }"
+        "QToolButton:pressed { background: %2; }").arg(m_theme.hoverBg, m_theme.pressedBg);
+
+    if (m_addSourceBtn) {
+        m_addSourceBtn->setStyleSheet(srcBtnStyle);
+        m_addSourceBtn->setIcon(Icons::add(m_theme.iconSuccess));
+    }
+    if (m_editSourceBtn) {
+        m_editSourceBtn->setStyleSheet(srcBtnStyle);
+        m_editSourceBtn->setIcon(Icons::edit(m_theme.iconDefault));
+    }
+    if (m_delSourceBtn) {
+        m_delSourceBtn->setStyleSheet(srcBtnStyle);
+        m_delSourceBtn->setIcon(Icons::trash(m_theme.iconError));
+    }
 }
 
 // ─── UI setup ────────────────────────────────────────────────────────────────
@@ -628,12 +703,12 @@ void MainWindow::setupControlBar()
     m_liveLabel->setVisible(false);
 
     // ── Volume group ──
-    auto *volIcon = new QToolButton;
-    volIcon->setIcon(Icons::volumeUp(m_theme.iconMuted));
-    volIcon->setIconSize(QSize(16, 16));
-    volIcon->setFixedSize(24, 24);
-    volIcon->setStyleSheet(QStringLiteral("QToolButton { border: none; background: transparent; }"));
-    volIcon->setEnabled(false);
+    m_volIcon = new QToolButton;
+    m_volIcon->setIcon(Icons::volumeUp(m_theme.iconMuted));
+    m_volIcon->setIconSize(QSize(16, 16));
+    m_volIcon->setFixedSize(24, 24);
+    m_volIcon->setStyleSheet(QStringLiteral("QToolButton { border: none; background: transparent; }"));
+    m_volIcon->setEnabled(false);
 
     m_volumeSlider = new QSlider(Qt::Horizontal);
     m_volumeSlider->setRange(0, 100);
@@ -675,7 +750,7 @@ void MainWindow::setupControlBar()
     lay->addWidget(m_timeLabel);
     lay->addWidget(makeSep());
     // ── Volume ──
-    lay->addWidget(volIcon);
+    lay->addWidget(m_volIcon);
     lay->addWidget(m_volumeSlider);
     lay->addWidget(makeSep());
     // ── Track / speed ──
@@ -1573,8 +1648,8 @@ void MainWindow::onToggleFavorite()
 void MainWindow::updateFavoriteButton(const Channel &ch)
 {
     m_favoriteBtn->setIcon(ch.isFavorite
-        ? Icons::starFilled(QColor("#BB86FC"))
-        : Icons::starOutline());
+        ? Icons::starFilled(m_theme.iconFavActive)
+        : Icons::starOutline(m_theme.iconDefault));
 }
 
 void MainWindow::onToggleEpg()

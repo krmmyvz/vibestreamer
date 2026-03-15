@@ -185,6 +185,7 @@ private:
     QSlider        *m_seekSlider;
     QLabel         *m_timeLabel;
     QLabel         *m_liveLabel;
+    QToolButton    *m_volIcon;
     QSlider        *m_volumeSlider;
     QComboBox      *m_speedCombo = nullptr;
     QToolButton    *m_audioBtn;

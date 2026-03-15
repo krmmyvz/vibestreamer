@@ -25,10 +25,9 @@ MpvWidget::MpvWidget(QWidget *parent)
         throw std::runtime_error("Failed to create mpv context");
 
     // Basic options
-    mpv_set_option_string(m_mpv, "terminal",    "yes");
-    mpv_set_option_string(m_mpv, "msg-level",   "all=v");
+    mpv_set_option_string(m_mpv, "terminal",    "no");   // disable terminal spam → reduces I/O CPU
     mpv_set_option_string(m_mpv, "vo",           "libmpv");
-    mpv_set_option_string(m_mpv, "hwdec",        "no"); // Force software decoding to test OpenGL pipeline
+    mpv_set_option_string(m_mpv, "hwdec",        "auto"); // enable hardware decoding
     mpv_set_option_string(m_mpv, "cache",        "yes");
     mpv_set_option_string(m_mpv, "cache-secs",   "30");
 
@@ -83,13 +82,12 @@ void MpvWidget::paintGL()
 {
     if (!m_glReady || !m_gl) return;
 
-    // Clear any pending OpenGL errors from Qt setup. libmpv's texture 
-    // creation relies on glGetError() and will abort if Qt left an error.
+    // Drain any pending OpenGL errors left by Qt so libmpv's glGetError() check
+    // doesn't see stale errors. Use a bounded loop to avoid an infinite spin
+    // if the driver keeps returning errors.
     if (auto *ctx = QOpenGLContext::currentContext()) {
         auto *funcs = ctx->functions();
-        while (funcs->glGetError() != 0 /* GL_NO_ERROR */) {
-            // spin
-        }
+        for (int i = 0; i < 8 && funcs->glGetError() != 0; ++i);
     }
 
     const qreal dpr = devicePixelRatio();
