@@ -16,7 +16,11 @@ set(MPV_DIR "" CACHE PATH "Manual path to libmpv (contains include/ and lib/). S
 if(NOT MPV_DIR STREQUAL "")
     # Manual override (Windows or custom installs)
     set(MPV_INCLUDE_DIRS "${MPV_DIR}/include")
-    find_library(MPV_LIB mpv PATHS "${MPV_DIR}/lib" REQUIRED)
+    find_library(MPV_LIB 
+        NAMES mpv libmpv libmpv.dll.a
+        PATHS "${MPV_DIR}/lib" "${MPV_DIR}" 
+        REQUIRED
+    )
     set(MPV_LIBRARIES "${MPV_LIB}")
     message(STATUS "libmpv: using MPV_DIR=${MPV_DIR}")
 else()
