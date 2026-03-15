@@ -11,8 +11,8 @@ int main(int argc, char *argv[])
 #endif
 
     QApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("XtreamPlayer"));
-    app.setOrganizationName(QStringLiteral("XtreamPlayer"));
+    app.setApplicationName(QStringLiteral("Vibestreamer"));
+    app.setOrganizationName(QStringLiteral("Vibestreamer"));
     app.setApplicationVersion(QStringLiteral("2.0.0"));
 
     // libmpv requires LC_NUMERIC="C" — must be set AFTER QApplication

@@ -53,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_epg(new EpgManager(this))
 {
-    setWindowTitle(QStringLiteral("Xtream Player"));
+    setWindowTitle(QStringLiteral("Vibestreamer"));
     resize(m_config.windowWidth, m_config.windowHeight);
 
     applyTheme();
@@ -164,7 +164,7 @@ void MainWindow::retranslateUi()
     setupMenuBar();
 
     if (m_trayIcon) {
-        m_trayIcon->setToolTip(QStringLiteral("Xtream Player"));
+        m_trayIcon->setToolTip(QStringLiteral("Vibestreamer"));
         if (auto *oldMenu = m_trayIcon->contextMenu()) {
             oldMenu->deleteLater();
         }
@@ -775,8 +775,8 @@ void MainWindow::setupMenuBar()
     });
     helpMenu->addSeparator();
     helpMenu->addAction(t(QStringLiteral("Hakkında"), QStringLiteral("About")), this, [this](){
-        QMessageBox::about(this, QStringLiteral("Xtream Player"),
-            QStringLiteral("Xtream Player v2.0\nC++ + Qt6 + libmpv"));
+        QMessageBox::about(this, QStringLiteral("Vibestreamer"),
+            QStringLiteral("Vibestreamer v2.0\nC++ + Qt6 + libmpv"));
     });
 }
 
@@ -1140,7 +1140,7 @@ void MainWindow::loadChannels(const QString &categoryId)
 
         auto *nam  = new QNetworkAccessManager(this);
         QNetworkRequest req{QUrl(src.m3uUrl)};
-        req.setRawHeader("User-Agent", "XtreamPlayer/2.0");
+        req.setRawHeader("User-Agent", "Vibestreamer/2.0");
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
         req.setTransferTimeout(60000); // Increased timeout to 60s
@@ -1398,7 +1398,7 @@ void MainWindow::playChannel(const Channel &ch)
     if (m_speedCombo)
         onSpeedChanged(m_speedCombo->currentIndex());
 
-    setWindowTitle(ch.name + QStringLiteral(" — Xtream Player"));
+    setWindowTitle(ch.name + QStringLiteral(" — Vibestreamer"));
     statusBar()->showMessage(ch.name);
 }
 
@@ -1738,7 +1738,7 @@ void MainWindow::setupTrayIcon()
 {
     m_trayIcon = new QSystemTrayIcon(this);
     m_trayIcon->setIcon(QIcon::fromTheme(QStringLiteral("video-x-generic"), Icons::tvGuide(m_theme.iconAccent)));
-    m_trayIcon->setToolTip(QStringLiteral("Xtream Player"));
+    m_trayIcon->setToolTip(QStringLiteral("Vibestreamer"));
 
     auto *trayMenu = new QMenu(this);
     

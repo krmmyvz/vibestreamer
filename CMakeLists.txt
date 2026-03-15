@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(XtreamPlayer VERSION 1.0.0 LANGUAGES CXX)
+project(Vibestreamer VERSION 1.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -65,11 +65,11 @@ set(SOURCES
     src/imagecache.cpp
 )
 
-qt_add_executable(XtreamPlayer ${SOURCES})
+qt_add_executable(Vibestreamer ${SOURCES})
 
-target_include_directories(XtreamPlayer PRIVATE src ${MPV_INCLUDE_DIRS})
+target_include_directories(Vibestreamer PRIVATE src ${MPV_INCLUDE_DIRS})
 
-target_link_libraries(XtreamPlayer PRIVATE
+target_link_libraries(Vibestreamer PRIVATE
     Qt6::Core
     Qt6::Gui
     Qt6::Widgets
@@ -85,7 +85,7 @@ target_link_libraries(XtreamPlayer PRIVATE
 
 # macOS: link OpenGL + IOKit frameworks
 if(APPLE)
-    target_link_libraries(XtreamPlayer PRIVATE
+    target_link_libraries(Vibestreamer PRIVATE
         "-framework OpenGL"
         "-framework IOKit"
         "-framework CoreFoundation"
@@ -94,9 +94,9 @@ endif()
 
 # Windows: hide console window in Release builds
 if(WIN32)
-    set_target_properties(XtreamPlayer PROPERTIES
+    set_target_properties(Vibestreamer PROPERTIES
         WIN32_EXECUTABLE $<CONFIG:Release>
     )
 endif()
 
-install(TARGETS XtreamPlayer DESTINATION bin)
+install(TARGETS Vibestreamer DESTINATION bin)

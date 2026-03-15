@@ -6,7 +6,7 @@
 MultiViewDialog::MultiViewDialog(QWidget *parent)
     : QDialog(parent)
 {
-    setWindowTitle(QStringLiteral("Xtream Player - Çoklu Ekran (Multi-View)"));
+    setWindowTitle(QStringLiteral("Vibestreamer - Çoklu Ekran (Multi-View)"));
     resize(1280, 720);
     setWindowFlags(Qt::Window); // behave like a normal window, not a blocking dialog
 

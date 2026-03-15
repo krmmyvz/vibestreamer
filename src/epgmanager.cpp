@@ -78,7 +78,7 @@ void EpgManager::load(const QString &urlsStr)
         }
 
         QNetworkRequest req{QUrl(url)};
-        req.setRawHeader("User-Agent", "XtreamPlayer/2.0");
+        req.setRawHeader("User-Agent", "Vibestreamer/2.0");
         req.setRawHeader("Accept-Encoding", "gzip, deflate");
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);

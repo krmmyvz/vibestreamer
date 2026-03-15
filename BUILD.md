@@ -1,4 +1,4 @@
-# Xtream Player — Derleme Kılavuzu
+# Vibestreamer — Derleme Kılavuzu
 
 ## Bağımlılıklar
 
@@ -30,17 +30,17 @@ brew install mpv qt cmake
 
 ### Linux / macOS
 ```bash
-cd xtream-qt
+cd vibestreamer
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
-./build/XtreamPlayer
+./build/Vibestreamer
 ```
 
 ### Windows (MSVC)
 ```cmd
 cmake -B build -DCMAKE_BUILD_TYPE=Release -DMPV_DIR=C:\path\to\mpv-dev
 cmake --build build --config Release
-.\build\Release\XtreamPlayer.exe
+.\build\Release\Vibestreamer.exe
 ```
 
 ---
@@ -48,12 +48,12 @@ cmake --build build --config Release
 ## Proje Yapısı
 
 ```
-xtream-qt/
+vibestreamer/
 ├── CMakeLists.txt
 └── src/
     ├── main.cpp            — Giriş noktası
     ├── models.h            — Veri modelleri (Source, Category, Channel, EpgProgram)
-    ├── config.h/cpp        — JSON config yönetimi (~/.config/XtreamPlayer/)
+    ├── config.h/cpp        — JSON config yönetimi (~/.config/Vibestreamer/)
     ├── xtreamclient.h/cpp  — Async Xtream Codes API (QNetworkAccessManager)
     ├── m3uparser.h/cpp     — M3U/M3U8 playlist parser
     ├── epgmanager.h/cpp    — XMLTV EPG parser (QXmlStreamReader)
