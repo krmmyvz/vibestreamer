@@ -27,7 +27,7 @@ jobs:
             libgl-dev libglu1-mesa-dev \
             libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
             libxcb-shape0 libxcb-xinerama0 fuse \
-            wget libzstd-dev
+            wget libzstd-dev imagemagick
 
       - name: Configure
         run: |
@@ -41,7 +41,15 @@ jobs:
       - name: Create AppDir
         run: |
           mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+          
+          # Copy main binary
           cp build/Vibestreamer AppDir/usr/bin/
+          
+          # BUNDLE libmpv for portability (Linux users might not have it installed)
+          # We'll copy the .so to usr/lib
+          cp /usr/lib/x86_64-linux-gnu/libmpv.so.1 AppDir/usr/lib/ 2>/dev/null || cp /usr/lib/libmpv.so.1 AppDir/usr/lib/ || true
 
           # Desktop file
           cat > AppDir/Vibestreamer.desktop << 'EOF'
@@ -51,11 +59,13 @@ jobs:
           Icon=vibestreamer
           Type=Application
           Categories=AudioVideo;Player;Network;
-          Comment=Modern IPTV player with Xtream Codes and M3U support
+          Comment=Modern IPTV player
+          Terminal=false
           EOF
 
-          # Simple icon placeholder (1x1 PNG via base64 if no icon present)
-          cp AppDir/Vibestreamer.desktop AppDir/usr/share/applications/Vibestreamer.desktop 2>/dev/null || mkdir -p AppDir/usr/share/applications && cp AppDir/Vibestreamer.desktop AppDir/usr/share/applications/
+          # Create a simple 512x512 PNG icon (white square) for linuxdeploy
+          # In a real scenario, use actual icons.
+          convert -size 512x512 xc:white AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png 2>/dev/null || touch AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png
 
       - name: Download linuxdeploy
         run: |
@@ -67,15 +77,32 @@ jobs:
         env:
           QMAKE: /usr/bin/qmake6
           QML_SOURCES_PATHS: .
+          APPIMAGE_EXTRACT_AND_RUN: 1
         run: |
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \
             --output appimage \
+            --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png \
             2>&1 || true
-          # Fallback: just ship the binary in a tar.gz
+          
+          # If AppImage failed, ensure tar.gz has the bundled libraries
           if [ ! -f Vibestreamer*.AppImage ]; then
-            tar -czf Vibestreamer-linux-x86_64.tar.gz -C build Vibestreamer
+            # Create a portable folder structure for tar.gz
+            mkdir -p release/bin
+            mkdir -p release/lib
+            cp build/Vibestreamer release/bin/
+            cp AppDir/usr/lib/libmpv.so* release/lib/ 2>/dev/null || true
+            
+            # Simple wrapper script
+            cat > release/Vibestreamer.sh << 'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="$HERE/lib:$LD_LIBRARY_PATH"
+          exec "$HERE/bin/Vibestreamer" "$@"
+          EOF
+            chmod +x release/Vibestreamer.sh
+            tar -czf Vibestreamer-linux-x86_64-portable.tar.gz -C release .
           else
             mv Vibestreamer*.AppImage Vibestreamer-linux-x86_64.AppImage
           fi
