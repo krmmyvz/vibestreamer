@@ -1,83 +1,95 @@
 #include "m3uparser.h"
 
 #include <QStringView>
+#include <QLatin1String>
 
-// Extract a named attribute value from an #EXTINF line
-static QString attr(const QString &line, const QString &key)
+// Extract a named attribute value from an #EXTINF line using QStringView to prevent copies
+static QStringView attr(QStringView line, QLatin1String key)
 {
-    const QString marker = key + QStringLiteral("=\"");
-    const int start = line.indexOf(marker);
-    if (start < 0)
-        return {};
-
-    const int valueStart = start + marker.size();
-    const int valueEnd = line.indexOf(QLatin1Char('"'), valueStart);
-    if (valueEnd < 0 || valueEnd <= valueStart)
-        return {};
-
-    return line.mid(valueStart, valueEnd - valueStart);
+    int start = line.indexOf(key);
+    while (start >= 0) {
+        int afterKey = start + key.size();
+        if (afterKey + 1 < line.size() && line[afterKey] == QLatin1Char('=') && line[afterKey + 1] == QLatin1Char('"')) {
+            int valueStart = afterKey + 2;
+            int valueEnd = line.indexOf(QLatin1Char('"'), valueStart);
+            if (valueEnd > valueStart) {
+                return line.mid(valueStart, valueEnd - valueStart);
+            }
+            break;
+        }
+        start = line.indexOf(key, start + 1);
+    }
+    return {};
 }
 
 M3UParser::Result M3UParser::parse(const QString &text, const QString &sourceId)
 {
     Result res;
+    // Pre-allocate memory to avoid multiple reallocations during large playlist parsing
+    res.channels.reserve(10000); 
 
     Channel pending;
     bool hasPending = false;
     int  idx        = 0;
 
+    QStringView textV(text);
     int start = 0;
-    const int length = text.size();
-    while (start <= length) {
-        int end = text.indexOf(QLatin1Char('\n'), start);
+    const int length = textV.size();
+    
+    while (start < length) {
+        int end = textV.indexOf(QLatin1Char('\n'), start);
         if (end < 0)
             end = length;
 
-        QString line = QStringView(text).mid(start, end - start).trimmed().toString();
+        // Extract a view of the line without allocating a new QString
+        QStringView line = textV.mid(start, end - start).trimmed();
         start = end + 1;
 
         if (line.isEmpty()) continue;
 
-        if (line.startsWith(QStringLiteral("#EXTM3U"))) {
-            res.epgUrl = attr(line, QStringLiteral("url-tvg"));
+        if (line.startsWith(QLatin1String("#EXTM3U"))) {
+            res.epgUrl = attr(line, QLatin1String("url-tvg")).toString();
             if (res.epgUrl.isEmpty())
-                res.epgUrl = attr(line, QStringLiteral("x-tvg-url"));
+                res.epgUrl = attr(line, QLatin1String("x-tvg-url")).toString();
             continue;
         }
 
-        if (line.startsWith(QStringLiteral("#EXTINF:"))) {
+        if (line.startsWith(QLatin1String("#EXTINF:"))) {
             pending = Channel{};
             hasPending = true;
 
             // Duration (between #EXTINF: and first comma)
             const int commaPos = line.indexOf(QLatin1Char(','));
-            if (commaPos != -1)
-                pending.name = line.mid(commaPos + 1).trimmed();
+            if (commaPos != -1) {
+                pending.name = line.mid(commaPos + 1).trimmed().toString();
+            }
 
             pending.sourceId     = sourceId;
             pending.id           = QString::number(++idx);
-            pending.logoUrl      = attr(line, QStringLiteral("tvg-logo"));
-            pending.epgChannelId = attr(line, QStringLiteral("tvg-id"));
-            pending.categoryName = attr(line, QStringLiteral("group-title"));
+            pending.logoUrl      = attr(line, QLatin1String("tvg-logo")).toString();
+            pending.epgChannelId = attr(line, QLatin1String("tvg-id")).toString();
+            pending.categoryName = attr(line, QLatin1String("group-title")).toString();
 
             // Prefer tvg-name if present
-            const QString tvgName = attr(line, QStringLiteral("tvg-name"));
+            const QStringView tvgName = attr(line, QLatin1String("tvg-name"));
             if (!tvgName.isEmpty())
-                pending.name = tvgName;
+                pending.name = tvgName.toString();
 
-            // Determine stream type from group-title heuristic
-            const QString grp = pending.categoryName.toLower();
-            if (grp.contains(QLatin1String("movie")) || grp.contains(QLatin1String("film"))
-                || grp.contains(QLatin1String("vod")))
+            // Determine stream type from group-title heuristic without allocating a new lowercase string
+            if (pending.categoryName.contains(QLatin1String("movie"), Qt::CaseInsensitive) || 
+                pending.categoryName.contains(QLatin1String("film"), Qt::CaseInsensitive) ||
+                pending.categoryName.contains(QLatin1String("vod"), Qt::CaseInsensitive)) {
                 pending.streamType = StreamType::VOD;
-            else if (grp.contains(QLatin1String("series")) || grp.contains(QLatin1String("dizi")))
+            } else if (pending.categoryName.contains(QLatin1String("series"), Qt::CaseInsensitive) || 
+                       pending.categoryName.contains(QLatin1String("dizi"), Qt::CaseInsensitive)) {
                 pending.streamType = StreamType::Series;
-            else
+            } else {
                 pending.streamType = StreamType::Live;
+            }
 
         } else if (hasPending && !line.startsWith(QLatin1Char('#'))) {
-            pending.streamUrl = line;
-            res.channels.append(pending);
+            pending.streamUrl = line.toString(); // Resolve the URL into a string
+            res.channels.append(pending);        // Add to the reserved list
             hasPending = false;
         }
     }
