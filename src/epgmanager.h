@@ -30,6 +30,12 @@ signals:
 
 private:
     // Result struct for background parsing
+    struct EpgState {
+        QHash<QString, QList<EpgProgram>> data;
+        QHash<QString, QString>           nameToId;
+        QHash<QString, QString>           channelIdByLower;
+    };
+
     struct ParseResult {
         QHash<QString, QList<EpgProgram>> data;
         QHash<QString, QString>           nameToId;
@@ -43,4 +49,5 @@ private:
     QHash<QString, QString>             m_channelIdByLower;
     int                                 m_pendingJobs = 0;
     int                                 m_loadGeneration = 0;
+    QList<ParseResult>                  m_pendingResults;
 };

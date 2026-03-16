@@ -64,10 +64,9 @@ void EpgManager::load(const QString &urlsStr)
 
     const QStringList urls = urlsStr.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (urls.isEmpty()) return;
-
-    m_data.clear();
-    m_nameToId.clear();
-    m_channelIdByLower.clear();
+    
+    // We don't clear m_data instantly, so the UI can still show old EPG while loading
+    m_pendingResults.clear();
     m_pendingJobs = urls.size();
 
     for (const QString &u : urls) {
@@ -107,25 +106,50 @@ void EpgManager::load(const QString &urlsStr)
                     return;
                 }
 
-                ParseResult result = watcher->result();
-                
-                // Merge results
-                for (auto it = result.data.constBegin(); it != result.data.constEnd(); ++it) {
-                    m_data[it.key()].append(it.value());
-                }
-                for (auto it = result.nameToId.constBegin(); it != result.nameToId.constEnd(); ++it) {
-                    m_nameToId.insert(it.key(), it.value());
-                }
+                m_pendingResults.append(watcher->result());
                 watcher->deleteLater();
+                
                 if (--m_pendingJobs == 0) {
-                    for (auto it = m_data.begin(); it != m_data.end(); ++it) {
-                        auto &programs = it.value();
-                        std::sort(programs.begin(), programs.end(), [](const EpgProgram &a, const EpgProgram &b) {
-                            return a.startTs < b.startTs;
-                        });
-                        m_channelIdByLower.insert(it.key().toLower(), it.key());
-                    }
-                    emit loaded();
+                    // Start a final background job to merge and sort everything
+                    auto *mergeWatcher = new QFutureWatcher<EpgState>(this);
+                    
+                    QList<ParseResult> resultsToMerge = m_pendingResults;
+                    m_pendingResults.clear();
+                    
+                    connect(mergeWatcher, &QFutureWatcher<EpgState>::finished, this, [this, mergeWatcher, generation]() {
+                        if (generation == m_loadGeneration) {
+                            EpgState finalState = mergeWatcher->result();
+                            m_data = finalState.data;
+                            m_nameToId = finalState.nameToId;
+                            m_channelIdByLower = finalState.channelIdByLower;
+                            emit loaded();
+                        }
+                        mergeWatcher->deleteLater();
+                    });
+                    
+                    mergeWatcher->setFuture(QtConcurrent::run([resultsToMerge]() {
+                        EpgState state;
+                        // Merge all partial results
+                        for (const auto &res : resultsToMerge) {
+                            for (auto it = res.data.constBegin(); it != res.data.constEnd(); ++it) {
+                                state.data[it.key()].append(it.value());
+                            }
+                            for (auto it = res.nameToId.constBegin(); it != res.nameToId.constEnd(); ++it) {
+                                state.nameToId.insert(it.key(), it.value());
+                            }
+                        }
+                        
+                        // Sort programs and build lower-case index
+                        for (auto it = state.data.begin(); it != state.data.end(); ++it) {
+                            auto &programs = it.value();
+                            std::sort(programs.begin(), programs.end(), [](const EpgProgram &a, const EpgProgram &b) {
+                                return a.startTs < b.startTs;
+                            });
+                            state.channelIdByLower.insert(it.key().toLower(), it.key());
+                        }
+                        
+                        return state;
+                    }));
                 }
             });
             
