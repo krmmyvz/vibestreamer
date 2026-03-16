@@ -11,7 +11,8 @@
 #include <QtConcurrent>
 #include <QFutureWatcher>
 #include "icons.h"
-#include "multiviewdialog.h"
+#include "multiviewwidget.h"
+#include <QStackedWidget>
 #include "imagecache.h"
 #include "localization.h"
 
@@ -99,6 +100,31 @@ MainWindow::~MainWindow() = default;
 QString MainWindow::t(const QString &key) const
 {
     return I18n::instance().get(key);
+}
+
+MpvWidget* MainWindow::activeMpv() const
+{
+    if (m_multiViewMode && m_multiViewWidget)
+        return m_multiViewWidget->activePlayer();
+    return m_mpv;
+}
+
+void MainWindow::connectActiveMpvSignals()
+{
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
+    connect(mpv, &MpvWidget::positionChanged, this, &MainWindow::onPositionChanged);
+    connect(mpv, &MpvWidget::durationChanged,  this, &MainWindow::onDurationChanged);
+    connect(mpv, &MpvWidget::pauseChanged,     this, &MainWindow::onPauseChanged);
+    connect(mpv, &MpvWidget::errorOccurred,    this, [this, mpv](const QString &msg) {
+        mpv->stop();
+        statusBar()->showMessage(t(QStringLiteral("playback_error")) + msg, 8000);
+    });
+}
+
+void MainWindow::disconnectMpvSignals(MpvWidget *mpv)
+{
+    if (mpv) mpv->disconnect(this);
 }
 
 void MainWindow::retranslateUi()
@@ -527,14 +553,13 @@ void MainWindow::setupSidebar()
                 }
                 if (ch.streamUrl.isEmpty()) return;
 
-                if (!m_multiViewDialog) {
-                    onOpenMultiView(); 
-                } else {
-                    m_multiViewDialog->show();
-                    m_multiViewDialog->raise();
-                    m_multiViewDialog->activateWindow();
-                }
-                m_multiViewDialog->playChannel(i, ch);
+                // Enter multiview if not already active
+                if (!m_multiViewMode) onOpenMultiView();
+
+                // Route channel to specific screen and activate it
+                m_multiViewWidget->player(i)->play(ch.streamUrl);
+                m_multiViewChannels[i] = ch;
+                m_multiViewWidget->setActiveIndex(i);
             });
         }
         menu.exec(m_channelList->mapToGlobal(pos));
@@ -583,25 +608,19 @@ void MainWindow::setupPlayerPanel()
         m_mpv = nullptr;
     }
 
+    m_playerStack = new QStackedWidget;
+
     if (m_mpv) {
-        lay->addWidget(m_mpv, 1);
-        
-        // Connect mpv signals
-        connect(m_mpv, &MpvWidget::positionChanged, this, &MainWindow::onPositionChanged);
-        connect(m_mpv, &MpvWidget::durationChanged,  this, &MainWindow::onDurationChanged);
-        connect(m_mpv, &MpvWidget::pauseChanged,     this, &MainWindow::onPauseChanged);
-        
-        // Non-blocking error handler — avoids freeze on bad channels
-        connect(m_mpv, &MpvWidget::errorOccurred, this, [this](const QString &msg){
-            m_mpv->stop(); // Stop playback to prevent further errors
-            statusBar()->showMessage(t(QStringLiteral("playback_error")) + msg, 8000);
-        });
+        m_playerStack->addWidget(m_mpv); // index 0
+        connectActiveMpvSignals();
     } else {
         auto *errLbl = new QLabel(t(QStringLiteral("player_load_failed")));
         errLbl->setAlignment(Qt::AlignCenter);
         errLbl->setStyleSheet(QStringLiteral("color: %1; font-size: 16px; font-weight: bold;").arg(m_theme.error));
-        lay->addWidget(errLbl, 1);
+        m_playerStack->addWidget(errLbl);
     }
+
+    lay->addWidget(m_playerStack, 1);
 
     // EPG panel
     m_epgPanel = new QWidget;
@@ -737,6 +756,7 @@ void MainWindow::setupControlBar()
     // ── Utility group ──
     m_favoriteBtn   = makeBtn(Icons::starOutline(m_theme.iconDefault),      t(QStringLiteral("toggle_favorite")), 32);
     m_multiViewBtn  = makeBtn(Icons::gridView(m_theme.iconDefault),         t(QStringLiteral("multi_view")), 32);
+    m_multiViewBtn->setCheckable(true);
     m_epgToggleBtn  = makeBtn(Icons::tvGuide(m_theme.iconDefault),          t(QStringLiteral("epg_toggle")), 32);
     m_pipBtn        = makeBtn(Icons::pictureInPicture(m_theme.iconDefault), t(QStringLiteral("pip")), 32);
     m_fullscreenBtn = makeBtn(Icons::fullscreen(m_theme.iconDefault),       t(QStringLiteral("fullscreen")), 32);
@@ -787,7 +807,8 @@ void MainWindow::setupControlBar()
     connect(m_seekSlider,   &QSlider::sliderPressed,  this, [this]{ m_seeking = true; });
     connect(m_seekSlider,   &QSlider::sliderReleased, this, [this]{
         m_seeking = false;
-        m_mpv->seek(m_seekSlider->value() / 1000.0 * m_mpv->duration());
+        if (MpvWidget *mpv = activeMpv())
+            mpv->seek(m_seekSlider->value() / 1000.0 * mpv->duration());
     });
     connect(m_audioBtn,      &QToolButton::clicked,        this, &MainWindow::onShowAudioMenu);
     connect(m_subBtn,        &QToolButton::clicked,        this, &MainWindow::onShowSubMenu);
@@ -847,11 +868,13 @@ void MainWindow::setupShortcuts()
 
     sc(m_config.shortcuts.value(QStringLiteral("fullscreen")), &MainWindow::toggleFullScreen);
     sc(m_config.shortcuts.value(QStringLiteral("play_pause")), &MainWindow::onPlayPause);
-    sc(m_config.shortcuts.value(QStringLiteral("mute")),       [this]{ m_mpv->setVolume(m_mpv->volume() == 0 ? m_config.volume : 0); });
-    
+    sc(m_config.shortcuts.value(QStringLiteral("mute")), [this]{
+        if (auto *m = activeMpv()) m->setVolume(m->volume() == 0 ? m_config.volume : 0);
+    });
+
     // Fixed seeking shortcuts
-    sc(QStringLiteral("Right"), [this]{ m_mpv->seek(m_mpv->position() + 10); });
-    sc(QStringLiteral("Left"),  [this]{ m_mpv->seek(m_mpv->position() - 10); });
+    sc(QStringLiteral("Right"), [this]{ if (auto *m = activeMpv()) m->seek(m->position() + 10); });
+    sc(QStringLiteral("Left"),  [this]{ if (auto *m = activeMpv()) m->seek(m->position() - 10); });
     
     sc(m_config.shortcuts.value(QStringLiteral("vol_up")),     [this]{ m_volumeSlider->setValue(qMin(100, m_volumeSlider->value() + 5)); });
     sc(m_config.shortcuts.value(QStringLiteral("vol_down")),   [this]{ m_volumeSlider->setValue(qMax(0,   m_volumeSlider->value() - 5)); });
@@ -1451,6 +1474,9 @@ void MainWindow::playChannel(const Channel &ch)
 {
     if (ch.streamUrl.isEmpty()) return;
 
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
+
     // Stop any active recording before switching channels
     if (m_isRecording)
         onRecordStop();
@@ -1458,20 +1484,24 @@ void MainWindow::playChannel(const Channel &ch)
     m_config.lastChannelUrl = ch.streamUrl;
 
     // Apply hw decode option (runtime property, not pre-init option)
-    m_mpv->setMpvProperty(QStringLiteral("hwdec"), m_config.mpvHwDecode);
+    mpv->setMpvProperty(QStringLiteral("hwdec"), m_config.mpvHwDecode);
     if (!m_config.mpvExtraArgs.isEmpty()) {
         const QStringList parts = m_config.mpvExtraArgs.split(QLatin1Char(' '),
                                                                Qt::SkipEmptyParts);
         for (const QString &part : parts) {
             const int eq = part.indexOf(QLatin1Char('='));
             if (eq > 0)
-                m_mpv->setMpvProperty(part.left(eq), part.mid(eq + 1));
+                mpv->setMpvProperty(part.left(eq), part.mid(eq + 1));
         }
     }
 
-    m_mpv->play(ch.streamUrl);
+    mpv->play(ch.streamUrl);
 
-    // Apply speed — allow any speed for all stream types so users can catch up
+    // Track channel in active multiview cell
+    if (m_multiViewMode && m_multiViewWidget)
+        m_multiViewChannels[m_multiViewWidget->activeIndex()] = ch;
+
+    // Apply speed
     if (m_speedCombo)
         onSpeedChanged(m_speedCombo->currentIndex());
 
@@ -1543,7 +1573,7 @@ void MainWindow::refreshEpg()
 
 void MainWindow::onPlayPause()
 {
-    m_mpv->setPause(!m_mpv->isPaused());
+    if (auto *mpv = activeMpv()) mpv->setPause(!mpv->isPaused());
 }
 
 void MainWindow::onPauseChanged(bool paused)
@@ -1553,23 +1583,26 @@ void MainWindow::onPauseChanged(bool paused)
 
 void MainWindow::onVolumeChanged(int value)
 {
-    m_mpv->setVolume(value);
+    if (auto *mpv = activeMpv()) mpv->setVolume(value);
     m_config.volume = value;
     statusBar()->showMessage(t(QStringLiteral("volume_status")).arg(value), 1500);
 }
 
 void MainWindow::onSpeedChanged(int index)
 {
-    if (!m_mpv || !m_speedCombo) return;
+    if (!m_speedCombo) return;
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
     constexpr double speeds[] = {0.5, 0.75, 1.0, 1.25, 1.5, 2.0};
     if (index >= 0 && index < 6)
-        m_mpv->setSpeed(speeds[index]);
+        mpv->setSpeed(speeds[index]);
 }
 
 void MainWindow::onPositionChanged(double secs)
 {
     if (!m_seeking) {
-        const double dur = m_mpv->duration();
+        MpvWidget *mpv = activeMpv();
+        const double dur = mpv ? mpv->duration() : 0.0;
         if (dur > 0)
             m_seekSlider->setValue(static_cast<int>(secs / dur * 1000));
         m_timeLabel->setText(formatTime(secs) + QStringLiteral(" / ")
@@ -1628,7 +1661,8 @@ void MainWindow::onDurationChanged(double secs)
     m_seekSlider->setEnabled(secs > 0);
     m_liveLabel->setVisible(isLive);
 
-    m_timeLabel->setText(formatTime(m_mpv->position()) + QStringLiteral(" / ")
+    MpvWidget *mpv = activeMpv();
+    m_timeLabel->setText(formatTime(mpv ? mpv->position() : 0.0) + QStringLiteral(" / ")
                          + formatTime(secs));
 }
 
@@ -1687,12 +1721,12 @@ void MainWindow::updateStyle()
 
 void MainWindow::onSkipBack()
 {
-    m_mpv->seek(qMax(0.0, m_mpv->position() - 10));
+    if (auto *mpv = activeMpv()) mpv->seek(qMax(0.0, mpv->position() - 10));
 }
 
 void MainWindow::onSkipForward()
 {
-    m_mpv->seek(m_mpv->position() + 10);
+    if (auto *mpv = activeMpv()) mpv->seek(mpv->position() + 10);
 }
 
 void MainWindow::onPrevChannel()
@@ -1717,8 +1751,10 @@ void MainWindow::onNextChannel()
 
 void MainWindow::onShowAudioMenu()
 {
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
     QMenu menu(this);
-    const auto tracks = m_mpv->trackList();
+    const auto tracks = mpv->trackList();
     bool hasAudio = false;
     for (const TrackInfo &t : tracks) {
         if (t.type != QLatin1String("audio")) continue;
@@ -1731,7 +1767,7 @@ void MainWindow::onShowAudioMenu()
         act->setCheckable(true);
         act->setChecked(t.selected);
         const int64_t id = t.id;
-        connect(act, &QAction::triggered, this, [this, id]{ m_mpv->setAudioTrack(id); });
+        connect(act, &QAction::triggered, this, [this, id]{ if (auto *m = activeMpv()) m->setAudioTrack(id); });
     }
     if (!hasAudio)
         menu.addAction(t(QStringLiteral("no_audio_tracks")))->setEnabled(false);
@@ -1740,8 +1776,10 @@ void MainWindow::onShowAudioMenu()
 
 void MainWindow::onShowSubMenu()
 {
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
     QMenu menu(this);
-    const auto tracks = m_mpv->trackList();
+    const auto tracks = mpv->trackList();
     bool hasSub = false;
 
     // "Off" option
@@ -1760,11 +1798,11 @@ void MainWindow::onShowSubMenu()
         act->setCheckable(true);
         act->setChecked(t.selected);
         const int64_t id = t.id;
-        connect(act, &QAction::triggered, this, [this, id]{ m_mpv->setSubtitleTrack(id); });
+        connect(act, &QAction::triggered, this, [this, id]{ if (auto *m = activeMpv()) m->setSubtitleTrack(id); });
     }
     offAct->setChecked(!anySel);
     connect(offAct, &QAction::triggered, this, [this]{
-        m_mpv->setSubtitleTrack(0);  // sid=0 disables subtitles
+        if (auto *m = activeMpv()) m->setSubtitleTrack(0);  // sid=0 disables subtitles
     });
 
     if (!hasSub && menu.actions().size() == 1)
@@ -1774,7 +1812,9 @@ void MainWindow::onShowSubMenu()
 
 void MainWindow::onShowMediaInfo()
 {
-    const auto tracks = m_mpv->trackList();
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
+    const auto tracks = mpv->trackList();
     QString info;
 
     // General
@@ -1784,17 +1824,17 @@ void MainWindow::onShowMediaInfo()
     info += QLatin1Char('\n');
 
     // Video
-    const int vw = m_mpv->videoWidth();
-    const int vh = m_mpv->videoHeight();
+    const int vw = mpv->videoWidth();
+    const int vh = mpv->videoHeight();
     if (vw > 0 && vh > 0)
         info += QStringLiteral("Video: %1×%2").arg(vw).arg(vh);
-    const QString vc = m_mpv->videoCodec();
+    const QString vc = mpv->videoCodec();
     if (!vc.isEmpty())
         info += QStringLiteral("  Codec: %1").arg(vc);
     info += QLatin1Char('\n');
 
     // Audio
-    const QString ac = m_mpv->audioCodec();
+    const QString ac = mpv->audioCodec();
     if (!ac.isEmpty())
         info += QStringLiteral("Audio Codec: %1\n").arg(ac);
     info += QLatin1Char('\n');
@@ -1829,7 +1869,7 @@ void MainWindow::setupTrayIcon()
     
     auto *muteAct = new QAction(t(QStringLiteral("mute_unmute")), this);
     connect(muteAct, &QAction::triggered, this, [this]{
-        if (m_mpv) m_mpv->setVolume(m_mpv->volume() > 0 ? 0 : m_config.volume);
+        if (auto *m = activeMpv()) m->setVolume(m->volume() > 0 ? 0 : m_config.volume);
     });
     
     auto *quitAct = new QAction(t(QStringLiteral("exit")), this);
@@ -1855,7 +1895,8 @@ void MainWindow::setupTrayIcon()
 
 void MainWindow::onToggleRecord()
 {
-    if (!m_mpv || m_currentChannel.streamUrl.isEmpty()) return;
+    MpvWidget *mpv = activeMpv();
+    if (!mpv || m_currentChannel.streamUrl.isEmpty()) return;
 
     if (m_isRecording) {
         // If already recording, clicking record again acts as stop
@@ -1880,7 +1921,7 @@ void MainWindow::onToggleRecord()
     const QString fileName = QStringLiteral("Record_%1_%2.ts").arg(safeName, timestamp);
     m_recordFilePath = recordDir.absoluteFilePath(fileName);
 
-    m_mpv->setMpvProperty(QStringLiteral("stream-record"), m_recordFilePath);
+    mpv->setMpvProperty(QStringLiteral("stream-record"), m_recordFilePath);
     m_isRecording = true;
     m_recordPaused = false;
 
@@ -1896,11 +1937,12 @@ void MainWindow::onToggleRecord()
 
 void MainWindow::onRecordPauseResume()
 {
-    if (!m_mpv || !m_isRecording) return;
+    MpvWidget *mpv = activeMpv();
+    if (!mpv || !m_isRecording) return;
 
     if (!m_recordPaused) {
         // Pause: stop writing to file but keep the partial recording
-        m_mpv->setMpvProperty(QStringLiteral("stream-record"), QString());
+        mpv->setMpvProperty(QStringLiteral("stream-record"), QString());
         m_recordPaused = true;
         m_recordPauseBtn->setIcon(Icons::play(m_theme.iconAccent));
         m_recordPauseBtn->setToolTip(t(QStringLiteral("resume_recording")));
@@ -1918,7 +1960,7 @@ void MainWindow::onRecordPauseResume()
         else
             resumed += QStringLiteral("_part%1").arg(m_recordSegment);
 
-        m_mpv->setMpvProperty(QStringLiteral("stream-record"), resumed);
+        mpv->setMpvProperty(QStringLiteral("stream-record"), resumed);
         m_recordPaused = false;
         m_recordPauseBtn->setIcon(Icons::pause(m_theme.iconDefault));
         m_recordPauseBtn->setToolTip(t(QStringLiteral("pause_recording")));
@@ -1931,10 +1973,11 @@ void MainWindow::onRecordPauseResume()
 
 void MainWindow::onRecordStop()
 {
-    if (!m_mpv) return;
+    MpvWidget *mpv = activeMpv();
+    if (!mpv) return;
 
     // Stop recording — finalize file
-    m_mpv->setMpvProperty(QStringLiteral("stream-record"), QString());
+    mpv->setMpvProperty(QStringLiteral("stream-record"), QString());
     m_isRecording = false;
     m_recordPaused = false;
 
@@ -1952,18 +1995,95 @@ void MainWindow::onRecordStop()
 
 void MainWindow::onOpenMultiView()
 {
-    if (!m_multiViewDialog) {
-        m_multiViewDialog = new MultiViewDialog(this);
+    if (!m_mpv) return;
+
+    if (!m_multiViewMode) {
+        // ── Enter MultiView ──
+        m_multiViewMode = true;
+
+        if (!m_multiViewWidget) {
+            m_multiViewWidget = new MultiViewWidget(this);
+            m_playerStack->addWidget(m_multiViewWidget); // index 1
+
+            // Apply config settings to all 4 players
+            for (int i = 0; i < 4; ++i) {
+                MpvWidget *p = m_multiViewWidget->player(i);
+                if (!m_config.mpvHwDecode.isEmpty())
+                    p->setMpvProperty(QStringLiteral("hwdec"), m_config.mpvHwDecode);
+                if (!m_config.mpvExtraArgs.isEmpty()) {
+                    const QStringList parts = m_config.mpvExtraArgs.split(
+                        QLatin1Char(' '), Qt::SkipEmptyParts);
+                    for (const QString &part : parts) {
+                        const int eq = part.indexOf(QLatin1Char('='));
+                        if (eq > 0) p->setMpvProperty(part.left(eq), part.mid(eq + 1));
+                    }
+                }
+            }
+
+            connect(m_multiViewWidget, &MultiViewWidget::activeChanged,
+                    this, &MainWindow::onMultiViewActiveChanged);
+        }
+
+        // Disconnect m_mpv UI signals
+        disconnectMpvSignals(m_mpv);
+
+        // Switch to multiview stack page
+        m_playerStack->setCurrentWidget(m_multiViewWidget);
+
+        // Transfer current channel to cell 0
+        if (!m_currentChannel.streamUrl.isEmpty()) {
+            m_multiViewWidget->player(0)->play(m_currentChannel.streamUrl);
+            m_multiViewChannels[0] = m_currentChannel;
+        }
+
+        // Connect signals from active multiview player
+        connectActiveMpvSignals();
+        m_multiViewWidget->activePlayer()->setVolume(m_volumeSlider->value());
+
+        m_multiViewBtn->setChecked(true);
+
+    } else {
+        // ── Exit MultiView ──
+        const int activeIdx = m_multiViewWidget->activeIndex();
+        const Channel activeChannel = m_multiViewChannels[activeIdx];
+
+        // Disconnect active multiview player signals
+        disconnectMpvSignals(m_multiViewWidget->activePlayer());
+
+        // Stop all multiview players
+        for (int i = 0; i < 4; ++i)
+            m_multiViewWidget->player(i)->stop();
+
+        // Switch back to single player
+        m_playerStack->setCurrentWidget(m_mpv);
+        m_multiViewMode = false;
+
+        // Play active cell's channel in m_mpv
+        if (!activeChannel.streamUrl.isEmpty()) {
+            m_currentChannel = activeChannel;
+            m_mpv->play(activeChannel.streamUrl);
+            setWindowTitle(activeChannel.name + QStringLiteral(" — Vibestreamer"));
+            statusBar()->showMessage(activeChannel.name);
+        }
+
+        // Reconnect m_mpv signals
+        connectActiveMpvSignals();
+        m_mpv->setVolume(m_volumeSlider->value());
+
+        m_multiViewBtn->setChecked(false);
     }
-    
-    m_multiViewDialog->show();
-    m_multiViewDialog->raise();
-    m_multiViewDialog->activateWindow();
-    
-    // Allow it to run independently. You could also connect a signal to play the current channel
-    if (!m_currentChannel.streamUrl.isEmpty()) {
-        m_multiViewDialog->playChannel(0, m_currentChannel);
-    }
+}
+
+void MainWindow::onMultiViewActiveChanged(int newIndex, int oldIndex)
+{
+    disconnectMpvSignals(m_multiViewWidget->player(oldIndex));
+    m_multiViewWidget->player(oldIndex)->setVolume(0);
+
+    connectActiveMpvSignals();
+    m_multiViewWidget->activePlayer()->setVolume(m_volumeSlider->value());
+
+    // Update play/pause button state
+    onPauseChanged(m_multiViewWidget->activePlayer()->isPaused());
 }
 
 void MainWindow::onTogglePip()

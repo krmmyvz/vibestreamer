@@ -23,7 +23,8 @@
 
 class MpvWidget;
 class XtreamClient;
-class MultiViewDialog;
+class MultiViewWidget;
+class QStackedWidget;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -79,6 +80,7 @@ private slots:
     void onShowMediaInfo();
     void onTogglePip();
     void onOpenMultiView();
+    void onMultiViewActiveChanged(int newIndex, int oldIndex);
 
     // EPG refresh
     void refreshEpg();
@@ -111,6 +113,10 @@ private:
     void updateStyle();
     QString t(const QString &key) const;
 
+    MpvWidget* activeMpv() const;
+    void connectActiveMpvSignals();
+    void disconnectMpvSignals(MpvWidget *mpv);
+
     // ── Cache key helpers ──────────────────────────────────────────────
     struct CacheKey {
         QString sourceId;
@@ -139,7 +145,8 @@ private:
     bool            m_seeking    = false;
     bool            m_loadingChannels = false;
     bool            m_resumePending   = true;   // try to resume lastChannelUrl on first load
-    bool            m_pipMode    = false;
+    bool            m_pipMode       = false;
+    bool            m_multiViewMode = false;
     bool            m_isRecording = false;
     bool            m_recordPaused = false;
     QString         m_recordFilePath;    // current recording file path
@@ -177,8 +184,11 @@ private:
     QSortFilterProxyModel *m_proxyModel;
 
     // Player panel
-    QWidget        *m_playerPanel;
-    MpvWidget      *m_mpv;
+    QWidget         *m_playerPanel;
+    QStackedWidget  *m_playerStack  = nullptr;
+    MpvWidget       *m_mpv;
+    MultiViewWidget *m_multiViewWidget = nullptr;
+    Channel          m_multiViewChannels[4];
 
     // Control bar
     QToolButton    *m_playPauseBtn;
@@ -213,7 +223,7 @@ private:
     // System Tray
     QSystemTrayIcon *m_trayIcon = nullptr;
 
-    MultiViewDialog *m_multiViewDialog = nullptr;
+    // (MultiViewWidget is stored as m_multiViewWidget above)
 
     // Auto Update Timer
     QTimer         *m_autoUpdateTimer = nullptr;

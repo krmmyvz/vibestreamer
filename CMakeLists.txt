@@ -65,7 +65,7 @@ set(SOURCES
     src/mainwindow.cpp
     src/sourcedialog.cpp
     src/settingsdialog.cpp
-    src/multiviewdialog.cpp
+    src/multiviewwidget.cpp
     src/imagecache.cpp
     resources.qrc
 )
