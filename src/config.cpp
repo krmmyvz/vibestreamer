@@ -57,7 +57,7 @@ void Config::load()
         src.password   = s[u"password"].toString();
         src.m3uUrl     = s[u"m3u_url"].toString();
         src.epgUrl     = s[u"epg_url"].toString();
-        src.autoUpdateIntervalHours = s[u"auto_update_interval_hours"].toInt(0);
+        src.autoUpdateIntervalHours = qBound(0, s[u"auto_update_interval_hours"].toInt(0), 168);
         src.lastUpdated = s[u"last_updated"].toInteger(0);
         sources.append(src);
     }
@@ -77,19 +77,22 @@ void Config::load()
         }
     }
 
-    lastSourceId    = root[u"last_source_id"].toString();
-    lastChannelUrl  = root[u"last_channel_url"].toString();
-    lastCategoryId  = root[u"last_category_id"].toString();
-    lastStreamType  = root[u"last_stream_type"].toInt(0);
-    volume          = root[u"volume"].toInt(100);
+    lastSourceId          = root[u"last_source_id"].toString();
+    lastChannelId         = root[u"last_channel_id"].toString();
+    lastChannelSourceId   = root[u"last_channel_source_id"].toString();
+    // Legacy fallback: if new fields absent, keep URL for one-time migration
+    lastChannelUrl        = root[u"last_channel_url"].toString();
+    lastCategoryId        = root[u"last_category_id"].toString();
+    lastStreamType  = qBound(0, root[u"last_stream_type"].toInt(0), 2);
+    volume          = qBound(0, root[u"volume"].toInt(100), 200);
     statePersistence= root[u"state_persistence"].toBool(true);
-    windowWidth     = root[u"window_width"].toInt(1280);
-    windowHeight    = root[u"window_height"].toInt(720);
+    windowWidth     = qBound(320,  root[u"window_width"].toInt(1280),  7680);
+    windowHeight    = qBound(240,  root[u"window_height"].toInt(720),  4320);
     showEpg         = root[u"show_epg"].toBool(true);
     minimizeToTray  = root[u"minimize_to_tray"].toBool(false);
     language        = root[u"language"].toString(QStringLiteral("en"));
     recordPath      = root[u"record_path"].toString();
-    themeMode       = root[u"theme_mode"].toInt(0);
+    themeMode       = qBound(0, root[u"theme_mode"].toInt(0), 1);
     accentColor     = root[u"accent_color"].toString(QStringLiteral("#BB86FC"));
     mpvHwDecode     = root[u"mpv_hw_decode"].toString(QStringLiteral("auto-safe"));
     mpvExtraArgs    = root[u"mpv_extra_args"].toString();
@@ -133,9 +136,11 @@ void Config::save()
     root[u"favorites"]        = favArr;
     root[u"search_history"]   = histArr;
     root[u"shortcuts"]        = shObj;
-    root[u"last_source_id"]   = lastSourceId;
-    root[u"last_channel_url"] = lastChannelUrl;
-    root[u"last_category_id"] = lastCategoryId;
+    root[u"last_source_id"]          = lastSourceId;
+    root[u"last_channel_id"]         = lastChannelId;
+    root[u"last_channel_source_id"]  = lastChannelSourceId;
+    // Note: last_channel_url intentionally NOT saved — credentials must not persist
+    root[u"last_category_id"]        = lastCategoryId;
     root[u"last_stream_type"] = lastStreamType;
     root[u"volume"]           = volume;
     root[u"state_persistence"] = statePersistence;

@@ -22,7 +22,9 @@ public:
     QList<Source> sources;
     QStringList   favorites;
     QString       lastSourceId;
-    QString       lastChannelUrl;
+    QString       lastChannelId;       // replaces lastChannelUrl — no credentials stored
+    QString       lastChannelSourceId;
+    QString       lastChannelUrl;      // legacy read-only; not written to disk anymore
     QString       lastCategoryId;
     int           lastStreamType = 0;  // 0=Live 1=VOD 2=Series
     QStringList   searchHistory;

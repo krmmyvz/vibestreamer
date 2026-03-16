@@ -25,9 +25,20 @@ XtreamClient::XtreamClient(const Source &source, QObject *parent)
     m_auth = q.toString(QUrl::FullyEncoded);
 }
 
+static bool isSafeUrl(const QString &url)
+{
+    const QString s = url.trimmed();
+    return s.startsWith(QStringLiteral("http://"),  Qt::CaseInsensitive)
+        || s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive);
+}
+
 void XtreamClient::get(const QString &url,
                        std::function<void(QByteArray, QString)> cb)
 {
+    if (!isSafeUrl(url)) {
+        cb({}, QStringLiteral("Rejected URL with disallowed scheme"));
+        return;
+    }
     QNetworkRequest req{QUrl(url)};
     req.setRawHeader("User-Agent", "Vibestreamer/2.0");
     req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
@@ -114,10 +125,12 @@ void XtreamClient::getSeriesCategories(std::function<void(QList<Category>, QStri
 void XtreamClient::getLiveStreams(const QString &categoryId,
                                   std::function<void(QList<Channel>, QString)> cb)
 {
-    QString url = m_base + QStringLiteral("/player_api.php?") + m_auth
-                  + QStringLiteral("&action=get_live_streams");
+    QUrlQuery q;
+    q.setQuery(m_auth);
+    q.addQueryItem(QStringLiteral("action"), QStringLiteral("get_live_streams"));
     if (!categoryId.isEmpty())
-        url += QStringLiteral("&category_id=") + categoryId;
+        q.addQueryItem(QStringLiteral("category_id"), categoryId);
+    const QString url = m_base + QStringLiteral("/player_api.php?") + q.toString(QUrl::FullyEncoded);
 
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }
@@ -148,10 +161,12 @@ void XtreamClient::getLiveStreams(const QString &categoryId,
 void XtreamClient::getVodStreams(const QString &categoryId,
                                  std::function<void(QList<Channel>, QString)> cb)
 {
-    QString url = m_base + QStringLiteral("/player_api.php?") + m_auth
-                  + QStringLiteral("&action=get_vod_streams");
+    QUrlQuery q;
+    q.setQuery(m_auth);
+    q.addQueryItem(QStringLiteral("action"), QStringLiteral("get_vod_streams"));
     if (!categoryId.isEmpty())
-        url += QStringLiteral("&category_id=") + categoryId;
+        q.addQueryItem(QStringLiteral("category_id"), categoryId);
+    const QString url = m_base + QStringLiteral("/player_api.php?") + q.toString(QUrl::FullyEncoded);
 
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }
@@ -191,10 +206,12 @@ void XtreamClient::getVodStreams(const QString &categoryId,
 void XtreamClient::getSeries(const QString &categoryId,
                               std::function<void(QList<Channel>, QString)> cb)
 {
-    QString url = m_base + QStringLiteral("/player_api.php?") + m_auth
-                  + QStringLiteral("&action=get_series");
+    QUrlQuery q;
+    q.setQuery(m_auth);
+    q.addQueryItem(QStringLiteral("action"), QStringLiteral("get_series"));
     if (!categoryId.isEmpty())
-        url += QStringLiteral("&category_id=") + categoryId;
+        q.addQueryItem(QStringLiteral("category_id"), categoryId);
+    const QString url = m_base + QStringLiteral("/player_api.php?") + q.toString(QUrl::FullyEncoded);
 
     get(url, [cb, this](QByteArray data, QString err) {
         if (!err.isEmpty()) { cb({}, err); return; }

@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
     QApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("Vibestreamer"));
     app.setOrganizationName(QStringLiteral("Vibestreamer"));
-    app.setApplicationVersion(QStringLiteral("1.3.0"));
+    app.setApplicationVersion(QStringLiteral("1.3.1"));
     app.setWindowIcon(QIcon(QStringLiteral(":/logo_concept1.svg")));
 
     // libmpv requires LC_NUMERIC="C" — must be set AFTER QApplication

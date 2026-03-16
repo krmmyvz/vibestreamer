@@ -90,6 +90,14 @@ void ImageCache::processQueue()
         if (m_cache.contains(url))
             continue;
 
+        // Only fetch http(s) URLs — reject file:// or other schemes
+        if (!url.startsWith(QStringLiteral("http://"),  Qt::CaseInsensitive) &&
+            !url.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
+            if (!m_queue.isEmpty() && !m_throttleTimer.isActive())
+                m_throttleTimer.start();
+            continue;
+        }
+
         QNetworkRequest req(url);
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
@@ -102,7 +110,13 @@ void ImageCache::processQueue()
             reply->deleteLater();
 
             if (reply->error() == QNetworkReply::NoError) {
-                const QByteArray rawData = reply->readAll();
+                constexpr qint64 kMaxLogoBytes = 2LL * 1024 * 1024; // 2 MB
+                const QByteArray rawData = reply->read(kMaxLogoBytes + 1);
+                if (rawData.size() > kMaxLogoBytes) {
+                    if (!m_queue.isEmpty() && !m_throttleTimer.isActive())
+                        m_throttleTimer.start();
+                    return;
+                }
                 
                 // Process image in background (QImage is thread-safe, QPixmap is not)
                 auto *watcher = new QFutureWatcher<QImage>(this);

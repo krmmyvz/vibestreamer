@@ -76,6 +76,14 @@ void EpgManager::load(const QString &urlsStr)
             continue;
         }
 
+        // Reject non-http(s) schemes (file://, ftp://, etc.)
+        const bool safeScheme = url.startsWith(QStringLiteral("http://"),  Qt::CaseInsensitive)
+                             || url.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive);
+        if (!safeScheme) {
+            if (--m_pendingJobs == 0) emit loaded();
+            continue;
+        }
+
         QNetworkRequest req{QUrl(url)};
         req.setRawHeader("User-Agent", "Vibestreamer/2.0");
         req.setRawHeader("Accept-Encoding", "gzip, deflate");
@@ -95,8 +103,13 @@ void EpgManager::load(const QString &urlsStr)
                 if (--m_pendingJobs == 0) emit loaded();
                 return;
             }
-            QByteArray raw = reply->readAll();
+            constexpr qint64 kMaxEpgBytes = 200LL * 1024 * 1024; // 200 MB
+            QByteArray raw = reply->read(kMaxEpgBytes + 1);
             reply->deleteLater();
+            if (raw.size() > kMaxEpgBytes) {
+                if (--m_pendingJobs == 0) emit loaded();
+                return;
+            }
 
             // Perform decompression AND parsing in a background thread
             auto *watcher = new QFutureWatcher<ParseResult>(this);

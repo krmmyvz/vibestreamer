@@ -50,6 +50,51 @@
 #include <QtConcurrent>
 #include <QFutureWatcher>
 
+// ─── Security helpers ─────────────────────────────────────────────────────────
+
+// Whitelist of safe mpv properties users may override via Extra MPV Args.
+// Dangerous ones (stream-record, screenshot-dir, config, script, …) are excluded.
+static bool isSafeMpvProperty(const QString &name)
+{
+    static const QSet<QString> kAllowed = {
+        QStringLiteral("hwdec"),
+        QStringLiteral("deband"),
+        QStringLiteral("scale"),
+        QStringLiteral("cscale"),
+        QStringLiteral("dscale"),
+        QStringLiteral("dither-depth"),
+        QStringLiteral("correct-downscaling"),
+        QStringLiteral("linear-downscaling"),
+        QStringLiteral("sigmoid-upscaling"),
+        QStringLiteral("interpolation"),
+        QStringLiteral("video-sync"),
+        QStringLiteral("framedrop"),
+        QStringLiteral("audio-channels"),
+        QStringLiteral("demuxer-max-bytes"),
+        QStringLiteral("cache"),
+        QStringLiteral("cache-secs"),
+        QStringLiteral("network-timeout"),
+        QStringLiteral("volume-max"),
+        QStringLiteral("af"),
+        QStringLiteral("vf"),
+        QStringLiteral("deinterlace"),
+        QStringLiteral("blend-subtitles"),
+        QStringLiteral("sub-scale"),
+        QStringLiteral("sub-bold"),
+        QStringLiteral("sub-font"),
+        QStringLiteral("sub-color"),
+    };
+    return kAllowed.contains(name);
+}
+
+// Accept only http:// and https:// URLs to prevent file:// / ftp:// injection.
+static bool isSafeUrl(const QString &url)
+{
+    const QString s = url.trimmed();
+    return s.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)
+        || s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive);
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 MainWindow::MainWindow(QWidget *parent)
@@ -593,13 +638,16 @@ void MainWindow::setupPlayerPanel()
         if (!m_config.mpvHwDecode.isEmpty())
             m_mpv->setMpvProperty(QStringLiteral("hwdec"), m_config.mpvHwDecode);
 
-        // Apply extra args if any
+        // Apply extra args if any — whitelisted properties only
         if (!m_config.mpvExtraArgs.isEmpty()) {
             const QStringList args = m_config.mpvExtraArgs.split(QLatin1Char(' '), Qt::SkipEmptyParts);
             for (const QString &arg : args) {
                 const int eq = arg.indexOf(QLatin1Char('='));
-                if (eq > 0)
-                    m_mpv->setMpvProperty(arg.left(eq), arg.mid(eq + 1));
+                if (eq > 0) {
+                    const QString key = arg.left(eq);
+                    if (isSafeMpvProperty(key))
+                        m_mpv->setMpvProperty(key, arg.mid(eq + 1));
+                }
             }
         }
     } catch (const std::exception &e) {
@@ -1177,12 +1225,13 @@ void MainWindow::loadChannels(const QString &categoryId)
 
         // Resume last channel on first load after startup
         // Deferred via single-shot timer so the GUI can finish painting first
-        if (m_config.statePersistence && m_resumePending && !m_config.lastChannelUrl.isEmpty()) {
+        if (m_config.statePersistence && m_resumePending && !m_config.lastChannelId.isEmpty()) {
             m_resumePending = false;
-            const QString resumeUrl = m_config.lastChannelUrl;
-            QTimer::singleShot(1000, this, [this, resumeUrl]() {
+            const QString resumeId       = m_config.lastChannelId;
+            const QString resumeSourceId = m_config.lastChannelSourceId;
+            QTimer::singleShot(1000, this, [this, resumeId, resumeSourceId]() {
                 for (int i = 0; i < m_allChannels.size(); ++i) {
-                    if (m_allChannels[i].streamUrl == resumeUrl) {
+                    if (m_allChannels[i].id == resumeId && m_allChannels[i].sourceId == resumeSourceId) {
                         QModelIndex sourceIdx = m_chanModel->index(i, 0);
                         QModelIndex proxyIdx = m_proxyModel->mapFromSource(sourceIdx);
                         if (proxyIdx.isValid()) {
@@ -1244,6 +1293,13 @@ void MainWindow::loadChannels(const QString &categoryId)
         m_loadingProgress->setVisible(true);
         m_loadingProgress->setRange(0, 0); // indeterminate
 
+        if (!isSafeUrl(src.m3uUrl)) {
+            m_loadingChannels = false;
+            m_loadingProgress->setVisible(false);
+            statusBar()->showMessage(t(QStringLiteral("m3u_load_error")) + QStringLiteral("Invalid URL scheme"), 6000);
+            return;
+        }
+
         auto *nam  = new QNetworkAccessManager(this);
         QNetworkRequest req{QUrl(src.m3uUrl)};
         req.setRawHeader("User-Agent", "Vibestreamer/2.0");
@@ -1268,9 +1324,17 @@ void MainWindow::loadChannels(const QString &categoryId)
                 return;
             }
 
-            const QByteArray raw = reply->readAll();
+            constexpr qint64 kMaxM3UBytes = 100LL * 1024 * 1024; // 100 MB
+            const QByteArray raw = reply->read(kMaxM3UBytes + 1);
             reply->deleteLater();
             nam->deleteLater();
+
+            if (raw.size() > kMaxM3UBytes) {
+                m_loadingChannels = false;
+                m_loadingProgress->setVisible(false);
+                statusBar()->showMessage(t(QStringLiteral("m3u_load_error")) + QStringLiteral("Response too large (>100 MB)"), 6000);
+                return;
+            }
 
             // Offload parsing to background thread
             auto *watcher = new QFutureWatcher<M3UParser::Result>(this);
@@ -1481,7 +1545,8 @@ void MainWindow::playChannel(const Channel &ch)
     if (m_isRecording)
         onRecordStop();
 
-    m_config.lastChannelUrl = ch.streamUrl;
+    m_config.lastChannelId       = ch.id;
+    m_config.lastChannelSourceId = ch.sourceId;
 
     // Apply hw decode option (runtime property, not pre-init option)
     mpv->setMpvProperty(QStringLiteral("hwdec"), m_config.mpvHwDecode);
@@ -1490,8 +1555,11 @@ void MainWindow::playChannel(const Channel &ch)
                                                                Qt::SkipEmptyParts);
         for (const QString &part : parts) {
             const int eq = part.indexOf(QLatin1Char('='));
-            if (eq > 0)
-                mpv->setMpvProperty(part.left(eq), part.mid(eq + 1));
+            if (eq > 0) {
+                const QString key = part.left(eq);
+                if (isSafeMpvProperty(key))
+                    mpv->setMpvProperty(key, part.mid(eq + 1));
+            }
         }
     }
 
@@ -1904,10 +1972,20 @@ void MainWindow::onToggleRecord()
         return;
     }
 
-    // Start recording
+    // Start recording — validate path stays within safe locations
     QString dir = m_config.recordPath;
     if (dir.isEmpty())
         dir = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
+
+    {
+        // Resolve to canonical/absolute path and ensure it's under home directory
+        const QString homePath = QDir::homePath();
+        const QString absDir   = QDir(dir).absolutePath();
+        if (!absDir.startsWith(homePath)) {
+            // Fall back to Movies folder if outside home (e.g. /etc, /tmp)
+            dir = QStandardPaths::writableLocation(QStandardPaths::MoviesLocation);
+        }
+    }
 
     QDir recordDir(dir);
     if (!recordDir.exists())
@@ -1915,6 +1993,13 @@ void MainWindow::onToggleRecord()
 
     QString safeName = m_currentChannel.name;
     safeName.replace(QRegularExpression(QStringLiteral("[^A-Za-z0-9_]")), QStringLiteral("_"));
+
+    // Guard against Windows reserved filenames (CON, PRN, AUX, NUL, COM1-9, LPT1-9)
+    static const QRegularExpression kWinReserved(
+        QStringLiteral("^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (safeName.isEmpty() || kWinReserved.match(safeName).hasMatch())
+        safeName = QStringLiteral("Channel");
 
     const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
     m_recordSegment = 0;
