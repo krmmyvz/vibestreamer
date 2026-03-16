@@ -236,12 +236,41 @@ jobs:
           Write-Host "mpv DLLs found: $($mpvDlls.Name)"
           $mpvDlls | ForEach-Object { Copy-Item $_.FullName dist\ }
 
-          # Deploy Qt DLLs + MSVC runtime — use QT_ROOT_DIR set by install-qt-action
-          $windeployqt = "$env:QT_ROOT_DIR\bin\windeployqt.exe"
-          if (-not (Test-Path $windeployqt)) {
-            # Fallback: resolve from Qt6_DIR (may point to lib/cmake/Qt6)
-            $windeployqt = Join-Path (Split-Path (Split-Path (Split-Path $env:Qt6_DIR))) "bin\windeployqt.exe"
+          # Locate windeployqt — try multiple strategies in order
+          $windeployqt = $null
+
+          # 1. QT_ROOT_DIR set by install-qt-action (must actually contain windeployqt)
+          if ($env:QT_ROOT_DIR) {
+            $candidate = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
+            if (Test-Path $candidate) { $windeployqt = $candidate }
           }
+
+          # 2. Qt6_DIR points to lib/cmake/Qt6 — walk up 3 levels to get Qt root
+          if (-not $windeployqt -and $env:Qt6_DIR) {
+            $candidate = Join-Path (Split-Path (Split-Path (Split-Path $env:Qt6_DIR))) "bin\windeployqt.exe"
+            if (Test-Path $candidate) { $windeployqt = $candidate }
+          }
+
+          # 3. windeployqt already on PATH (install-qt-action adds Qt/bin to PATH)
+          if (-not $windeployqt) {
+            $found = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+            if ($found) { $windeployqt = $found.Source }
+          }
+
+          # 4. Brute-force search under RUNNER_WORKSPACE\Qt (install-qt-action default)
+          if (-not $windeployqt) {
+            $searchRoot = Join-Path $env:RUNNER_WORKSPACE "Qt"
+            if (Test-Path $searchRoot) {
+              $found = Get-ChildItem -Path $searchRoot -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) { $windeployqt = $found.FullName }
+            }
+          }
+
+          if (-not $windeployqt) {
+            Write-Error "windeployqt.exe could not be found. Searched: QT_ROOT_DIR=$env:QT_ROOT_DIR  Qt6_DIR=$env:Qt6_DIR  PATH and RUNNER_WORKSPACE\Qt"
+            exit 1
+          }
+
           Write-Host "Using windeployqt: $windeployqt"
           & $windeployqt dist\Vibestreamer.exe --release --no-translations --compiler-runtime 2>&1
 
