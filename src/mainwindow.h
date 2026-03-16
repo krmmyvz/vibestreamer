@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QListView>
 #include <QStandardItemModel>
+#include <QSortFilterProxyModel>
 #include <QMainWindow>
 #include <QSlider>
 #include <QSplitter>
@@ -133,8 +134,7 @@ private:
 
     QList<Category> m_categories;
     QList<Channel>  m_allChannels;   // full list for current category
-    QList<Channel>  m_filteredChannels;
-    Channel         m_currentChannel;
+        Channel         m_currentChannel;
     StreamType      m_streamType = StreamType::Live;
     bool            m_seeking    = false;
     bool            m_loadingChannels = false;
@@ -174,6 +174,7 @@ private:
     QComboBox      *m_viewModeCombo;
     QListView *m_channelList;
     QStandardItemModel *m_chanModel;
+    QSortFilterProxyModel *m_proxyModel;
 
     // Player panel
     QWidget        *m_playerPanel;

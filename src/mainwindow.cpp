@@ -482,7 +482,10 @@ void MainWindow::setupSidebar()
 
     chLay->addLayout(filterLay);
 
-    m_channelList = new QListView; m_chanModel = new QStandardItemModel(this); m_channelList->setModel(m_chanModel); m_channelList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_channelList = new QListView; m_chanModel = new QStandardItemModel(this); m_proxyModel = new QSortFilterProxyModel(this);
+    m_proxyModel->setSourceModel(m_chanModel);
+    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+    m_channelList->setModel(m_proxyModel); m_channelList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_channelList->setAlternatingRowColors(false);
     m_channelList->setSpacing(1);
     m_channelList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -517,7 +520,7 @@ void MainWindow::setupSidebar()
             connect(action, &QAction::triggered, this, [this, item, i]() {
                 const QString url = item.data(Qt::UserRole).toString();
                 Channel ch;
-                for (const Channel &c : m_filteredChannels) {
+                for (const Channel &c : m_allChannels) {
                     if (c.streamUrl == url) { ch = c; break; }
                 }
                 if (ch.streamUrl.isEmpty()) return;
@@ -1147,6 +1150,7 @@ void MainWindow::loadChannels(const QString &categoryId)
         m_allChannels = std::move(channels);
         for (Channel &ch : m_allChannels)
             ch.isFavorite = m_config.isFavorite(ch.streamUrl);
+        populateChannelList(m_allChannels);
         applySearchFilter();
         m_loadingChannels = false;
         m_loadingProgress->setVisible(false);
@@ -1158,10 +1162,14 @@ void MainWindow::loadChannels(const QString &categoryId)
             m_resumePending = false;
             const QString resumeUrl = m_config.lastChannelUrl;
             QTimer::singleShot(1000, this, [this, resumeUrl]() {
-                for (int i = 0; i < m_filteredChannels.size(); ++i) {
-                    if (m_filteredChannels[i].streamUrl == resumeUrl) {
-                        m_channelList->setCurrentIndex(m_chanModel->index(i, 0));
-                        m_currentChannel = m_filteredChannels[i];
+                for (int i = 0; i < m_allChannels.size(); ++i) {
+                    if (m_allChannels[i].streamUrl == resumeUrl) {
+                        QModelIndex sourceIdx = m_chanModel->index(i, 0);
+                        QModelIndex proxyIdx = m_proxyModel->mapFromSource(sourceIdx);
+                        if (proxyIdx.isValid()) {
+                            m_channelList->setCurrentIndex(proxyIdx);
+                        }
+                        m_currentChannel = m_allChannels[i];
                         updateFavoriteButton(m_currentChannel);
                         if (m_currentChannel.streamType == StreamType::Live)
                             updateEpgPanel(m_currentChannel);
@@ -1370,15 +1378,8 @@ void MainWindow::onSearchTextChanged(const QString &)
 
 void MainWindow::applySearchFilter()
 {
-    const QString q = m_searchEdit->text().trimmed().toLower();
-    m_filteredChannels.clear();
-
-    for (const Channel &ch : m_allChannels) {
-        if (q.isEmpty() || ch.name.toLower().contains(q))
-            m_filteredChannels.append(ch);
-    }
-
-    populateChannelList(m_filteredChannels);
+    const QString q = m_searchEdit->text().trimmed();
+    m_proxyModel->setFilterFixedString(q);
 }
 
 void MainWindow::onViewModeChanged(int index)
@@ -1436,7 +1437,7 @@ void MainWindow::onChannelSelected(const QModelIndex &item)
 {
     if (!item.isValid()) return;
     const QString url = item.data(Qt::UserRole).toString();
-    for (const Channel &ch : m_filteredChannels)
+    for (const Channel &ch : m_allChannels)
         if (ch.streamUrl == url) { m_currentChannel = ch; break; }
     updateFavoriteButton(m_currentChannel);
     if (m_currentChannel.streamType == StreamType::Live)
@@ -1703,7 +1704,7 @@ void MainWindow::onPrevChannel()
 {
     const int row = m_channelList->currentIndex().row();
     if (row > 0) {
-        auto idx = m_chanModel->index(row - 1, 0);
+        auto idx = m_proxyModel->index(row - 1, 0);
         m_channelList->setCurrentIndex(idx);
         onChannelDoubleClicked(idx);
     }
@@ -1712,9 +1713,10 @@ void MainWindow::onPrevChannel()
 void MainWindow::onNextChannel()
 {
     const int row = m_channelList->currentIndex().row();
-    if (row < m_chanModel->rowCount() - 1) {
-        m_channelList->setCurrentIndex(m_chanModel->index(row + 1, 0));
-        onChannelDoubleClicked(m_channelList->currentIndex());
+    if (row >= 0 && row < m_proxyModel->rowCount() - 1) {
+        auto idx = m_proxyModel->index(row + 1, 0);
+        m_channelList->setCurrentIndex(idx);
+        onChannelDoubleClicked(idx);
     }
 }
 
