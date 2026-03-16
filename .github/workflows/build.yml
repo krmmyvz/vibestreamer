@@ -63,8 +63,8 @@ jobs:
           Terminal=false
           EOF
 
-          # Create icon outside AppDir so linuxdeploy can deploy it correctly
-          convert -size 512x512 xc:white vibestreamer.png 2>/dev/null || touch vibestreamer.png
+          # Copy our new SVG icon so linuxdeploy can deploy it correctly
+          cp logo_concept1.svg vibestreamer.svg
 
       - name: Download linuxdeploy
         run: |
@@ -82,7 +82,7 @@ jobs:
             --appdir AppDir \
             --executable AppDir/usr/bin/Vibestreamer \
             --desktop-file AppDir/Vibestreamer.desktop \
-            --icon-file vibestreamer.png \
+            --icon-file vibestreamer.svg \
             --plugin qt \
             --output appimage \
             2>&1 || true

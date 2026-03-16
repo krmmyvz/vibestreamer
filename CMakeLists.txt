@@ -67,6 +67,7 @@ set(SOURCES
     src/settingsdialog.cpp
     src/multiviewdialog.cpp
     src/imagecache.cpp
+    resources.qrc
 )
 
 qt_add_executable(Vibestreamer ${SOURCES})

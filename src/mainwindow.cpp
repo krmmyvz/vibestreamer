@@ -1812,7 +1812,7 @@ void MainWindow::onShowMediaInfo()
 void MainWindow::setupTrayIcon()
 {
     m_trayIcon = new QSystemTrayIcon(this);
-    m_trayIcon->setIcon(QIcon::fromTheme(QStringLiteral("video-x-generic"), Icons::tvGuide(m_theme.iconAccent)));
+    m_trayIcon->setIcon(QIcon(QStringLiteral(":/logo_concept1.svg")));
     m_trayIcon->setToolTip(QStringLiteral("Vibestreamer"));
 
     auto *trayMenu = new QMenu(this);

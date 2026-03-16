@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QIcon>
 #include <clocale>
 
 int main(int argc, char *argv[])
@@ -14,6 +15,7 @@ int main(int argc, char *argv[])
     app.setApplicationName(QStringLiteral("Vibestreamer"));
     app.setOrganizationName(QStringLiteral("Vibestreamer"));
     app.setApplicationVersion(QStringLiteral("2.0.0"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/logo_concept1.svg")));
 
     // libmpv requires LC_NUMERIC="C" — must be set AFTER QApplication
     // because QApplication constructor resets the locale
