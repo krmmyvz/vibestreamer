@@ -230,11 +230,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path dist
           Copy-Item "build\Release\Vibestreamer.exe" dist\
-          # Copy mpv dll
-          Copy-Item "${{ github.workspace }}\mpv-dev\mpv-2.dll" dist\ -ErrorAction SilentlyContinue
-          Copy-Item "${{ github.workspace }}\mpv-dev\libmpv-2.dll" dist\ -ErrorAction SilentlyContinue
-          # Deploy Qt DLLs
-          & "$env:Qt6_DIR\bin\windeployqt.exe" dist\Vibestreamer.exe --release --no-translations 2>&1
+
+          # Copy mpv DLL — shinchiro builds use mpv-2.dll
+          $mpvDlls = Get-ChildItem "${{ github.workspace }}\mpv-dev" -Filter "*.dll"
+          Write-Host "mpv DLLs found: $($mpvDlls.Name)"
+          $mpvDlls | ForEach-Object { Copy-Item $_.FullName dist\ }
+
+          # Deploy Qt DLLs + MSVC runtime — use QT_ROOT_DIR set by install-qt-action
+          $windeployqt = "$env:QT_ROOT_DIR\bin\windeployqt.exe"
+          if (-not (Test-Path $windeployqt)) {
+            # Fallback: resolve from Qt6_DIR (may point to lib/cmake/Qt6)
+            $windeployqt = Join-Path (Split-Path (Split-Path (Split-Path $env:Qt6_DIR))) "bin\windeployqt.exe"
+          }
+          Write-Host "Using windeployqt: $windeployqt"
+          & $windeployqt dist\Vibestreamer.exe --release --no-translations --compiler-runtime 2>&1
+
           Compress-Archive -Path dist\* -DestinationPath Vibestreamer-Windows-x64.zip
 
       - name: Upload Windows artifact
