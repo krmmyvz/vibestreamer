@@ -43,15 +43,15 @@ jobs:
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/lib
           mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
-          
+
           # Copy main binary
           cp build/Vibestreamer AppDir/usr/bin/
-          
-          # BUNDLE libmpv for portability (Linux users might not have it installed)
-          # We'll copy the .so to usr/lib
-          cp /usr/lib/x86_64-linux-gnu/libmpv.so.1 AppDir/usr/lib/ 2>/dev/null || cp /usr/lib/libmpv.so.1 AppDir/usr/lib/ || true
 
-          # Desktop file
+          # Bundle libmpv — match any .so.N version (Ubuntu 22.04 ships libmpv.so.2)
+          cp /usr/lib/x86_64-linux-gnu/libmpv.so.* AppDir/usr/lib/ 2>/dev/null || \
+            cp /usr/lib/libmpv.so.* AppDir/usr/lib/ 2>/dev/null || true
+
+          # Desktop file — heredoc content indented to YAML block level (stripped by YAML parser)
           cat > AppDir/Vibestreamer.desktop << 'EOF'
           [Desktop Entry]
           Name=Vibestreamer
@@ -63,9 +63,8 @@ jobs:
           Terminal=false
           EOF
 
-          # Create a simple 512x512 PNG icon (white square) for linuxdeploy
-          # In a real scenario, use actual icons.
-          convert -size 512x512 xc:white AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png 2>/dev/null || touch AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png
+          # Create icon outside AppDir so linuxdeploy can deploy it correctly
+          convert -size 512x512 xc:white vibestreamer.png 2>/dev/null || touch vibestreamer.png
 
       - name: Download linuxdeploy
         run: |
@@ -81,20 +80,19 @@ jobs:
         run: |
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
+            --executable AppDir/usr/bin/Vibestreamer \
+            --desktop-file AppDir/Vibestreamer.desktop \
+            --icon-file vibestreamer.png \
             --plugin qt \
             --output appimage \
-            --icon-file AppDir/usr/share/icons/hicolor/512x512/apps/vibestreamer.png \
             2>&1 || true
-          
-          # If AppImage failed, ensure tar.gz has the bundled libraries
+
+          # Fallback: bundle into a portable tar.gz if AppImage creation failed
           if [ ! -f Vibestreamer*.AppImage ]; then
-            # Create a portable folder structure for tar.gz
-            mkdir -p release/bin
-            mkdir -p release/lib
+            mkdir -p release/bin release/lib
             cp build/Vibestreamer release/bin/
             cp AppDir/usr/lib/libmpv.so* release/lib/ 2>/dev/null || true
-            
-            # Simple wrapper script
+
             cat > release/Vibestreamer.sh << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "$0")")"
@@ -102,7 +100,7 @@ jobs:
           exec "$HERE/bin/Vibestreamer" "$@"
           EOF
             chmod +x release/Vibestreamer.sh
-            tar -czf Vibestreamer-linux-x86_64-portable.tar.gz -C release .
+            tar -czf Vibestreamer-linux-x86_64.tar.gz -C release .
           else
             mv Vibestreamer*.AppImage Vibestreamer-linux-x86_64.AppImage
           fi
