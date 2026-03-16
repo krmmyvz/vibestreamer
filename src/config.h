@@ -26,6 +26,7 @@ public:
     QStringList   searchHistory;
     QMap<QString, QString> shortcuts;
     int           volume        = 100;
+    bool          statePersistence = true;
     int           windowWidth   = 1280;
     int           windowHeight  = 720;
     bool          showEpg       = true;

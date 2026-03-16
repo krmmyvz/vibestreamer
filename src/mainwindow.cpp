@@ -717,7 +717,7 @@ void MainWindow::setupControlBar()
 
     m_volumeSlider = new QSlider(Qt::Horizontal);
     m_volumeSlider->setRange(0, 100);
-    m_volumeSlider->setValue(m_config.volume);
+    m_volumeSlider->setValue(m_config.statePersistence ? m_config.volume : 100);
     m_volumeSlider->setFixedWidth(75);
     m_volumeSlider->setToolTip(t(QStringLiteral("Ses"), QStringLiteral("Volume")));
 
@@ -802,7 +802,7 @@ void MainWindow::setupControlBar()
     connect(m_fullscreenBtn, &QToolButton::clicked,        this, &MainWindow::toggleFullScreen);
     connect(m_speedCombo,    &QComboBox::currentIndexChanged, this, &MainWindow::onSpeedChanged);
 
-    m_mpv->setVolume(m_config.volume);
+    m_mpv->setVolume(m_config.statePersistence ? m_config.volume : 100);
 }
 
 void MainWindow::setupMenuBar()
@@ -911,7 +911,7 @@ void MainWindow::loadSourceList()
     m_sourceCombo->blockSignals(false);
 
     // Restore last selected source
-    int idx = m_sourceCombo->findData(m_config.lastSourceId);
+    int idx = m_config.statePersistence ? m_sourceCombo->findData(m_config.lastSourceId) : -1;
     if (idx < 0 && m_sourceCombo->count() > 0) idx = 0;
     if (idx >= 0) {
         // If index is already the same (e.g. 0 after clear+add), Qt won't emit
@@ -1158,7 +1158,7 @@ void MainWindow::loadChannels(const QString &categoryId)
 
         // Resume last channel on first load after startup
         // Deferred via single-shot timer so the GUI can finish painting first
-        if (m_resumePending && !m_config.lastChannelUrl.isEmpty()) {
+        if (m_config.statePersistence && m_resumePending && !m_config.lastChannelUrl.isEmpty()) {
             m_resumePending = false;
             const QString resumeUrl = m_config.lastChannelUrl;
             QTimer::singleShot(1000, this, [this, resumeUrl]() {

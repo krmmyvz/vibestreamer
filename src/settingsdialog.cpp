@@ -70,23 +70,6 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
 
     lay->addWidget(playerGroup);
 
-    // ── Audio group ───────────────────────────────────────────────────
-    auto *audioGroup = new QGroupBox(Localization::text(lang, QStringLiteral("Ses"), QStringLiteral("Audio")));
-    auto *af         = new QFormLayout(audioGroup);
-
-    auto *volRow = new QHBoxLayout;
-    m_volumeSlider = new QSlider(Qt::Horizontal);
-    m_volumeSlider->setRange(0, 100);
-    m_volumeSlider->setValue(config.volume);
-    auto *volLabel = new QLabel(QString::number(config.volume));
-    volLabel->setMinimumWidth(28);
-    connect(m_volumeSlider, &QSlider::valueChanged, volLabel,
-            [volLabel](int v){ volLabel->setText(QString::number(v)); });
-    volRow->addWidget(m_volumeSlider);
-    volRow->addWidget(volLabel);
-    af->addRow(Localization::text(lang, QStringLiteral("Varsayılan Ses:"), QStringLiteral("Default Volume:")), volRow);
-    lay->addWidget(audioGroup);
-
     // ── Theme group ───────────────────────────────────────────────────
     auto *themeGroup = new QGroupBox(Localization::text(lang, QStringLiteral("Görünüm"), QStringLiteral("Appearance")));
     auto *tf         = new QFormLayout(themeGroup);
@@ -149,14 +132,14 @@ void SettingsDialog::applyTo(Config &config) const
     config.mpvHwDecode    = m_hwDecodeCombo->currentText();
     config.mpvExtraArgs   = m_extraArgsEdit->text().trimmed();
     config.minimizeToTray = m_minimizeTrayCheck->isChecked();
+    config.statePersistence = m_statePersistenceCheck->isChecked();
     config.recordPath     = m_recordPathEdit->text().trimmed();
     config.themeMode      = m_themeModeCombo->currentData().toInt();
     config.accentColor    = m_accentColorEdit->text().trimmed();
     if (config.accentColor.isEmpty()) {
         config.accentColor = QStringLiteral("#BB86FC");
     }
-    config.volume         = m_volumeSlider->value();
-    
+        
     for (auto it = m_shortcutEdits.constBegin(); it != m_shortcutEdits.constEnd(); ++it) {
         config.shortcuts.insert(it.key(), it.value()->keySequence().toString());
     }

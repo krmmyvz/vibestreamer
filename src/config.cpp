@@ -80,6 +80,7 @@ void Config::load()
     lastSourceId    = root[u"last_source_id"].toString();
     lastChannelUrl  = root[u"last_channel_url"].toString();
     volume          = root[u"volume"].toInt(100);
+    statePersistence= root[u"state_persistence"].toBool(true);
     windowWidth     = root[u"window_width"].toInt(1280);
     windowHeight    = root[u"window_height"].toInt(720);
     showEpg         = root[u"show_epg"].toBool(true);
@@ -133,6 +134,7 @@ void Config::save()
     root[u"last_source_id"]   = lastSourceId;
     root[u"last_channel_url"] = lastChannelUrl;
     root[u"volume"]           = volume;
+    root[u"state_persistence"] = statePersistence;
     root[u"window_width"]     = windowWidth;
     root[u"window_height"]    = windowHeight;
     root[u"show_epg"]         = showEpg;
