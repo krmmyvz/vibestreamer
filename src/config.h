@@ -33,7 +33,7 @@ public:
     int           windowHeight  = 720;
     bool          showEpg       = true;
     bool          minimizeToTray = false;
-    QString       language      = QStringLiteral("tr"); // tr | en
+    QString       language      = QStringLiteral("en"); // en | tr
     QString       recordPath;
     int           themeMode     = 0; // 0: Dark, 1: Light
     QString       accentColor   = QStringLiteral("#BB86FC");

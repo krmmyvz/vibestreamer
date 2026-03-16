@@ -14,8 +14,8 @@
 SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     : QDialog(parent)
 {
-    const QString &lang = config.language;
-    setWindowTitle(Localization::text(lang, QStringLiteral("Tercihler"), QStringLiteral("Preferences")));
+    const auto &i = I18n::instance();
+    setWindowTitle(i.get(QStringLiteral("pref_title")));
     setMinimumWidth(400);
 
     auto *mainLay = new QVBoxLayout(this);
@@ -26,7 +26,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     auto *lay = new QVBoxLayout(generalTab);
 
     // ── Player group ──────────────────────────────────────────────────
-    auto *playerGroup = new QGroupBox(Localization::text(lang, QStringLiteral("Oynatıcı"), QStringLiteral("Player")));
+    auto *playerGroup = new QGroupBox(i.get(QStringLiteral("pref_player")));
     auto *pf          = new QFormLayout(playerGroup);
 
     m_languageCombo = new QComboBox;
@@ -34,7 +34,7 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     m_languageCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
     const int langIdx = m_languageCombo->findData(config.language);
     m_languageCombo->setCurrentIndex(langIdx >= 0 ? langIdx : 0);
-    pf->addRow(Localization::text(lang, QStringLiteral("Dil:"), QStringLiteral("Language:")), m_languageCombo);
+    pf->addRow(i.get(QStringLiteral("pref_language")), m_languageCombo);
 
     m_hwDecodeCombo = new QComboBox;
     const QStringList hwOptions = {
@@ -49,79 +49,75 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     };
     m_hwDecodeCombo->addItems(hwOptions);
     m_hwDecodeCombo->setCurrentText(config.mpvHwDecode);
-    pf->addRow(Localization::text(lang, QStringLiteral("Donanım Decode:"), QStringLiteral("Hardware Decode:")), m_hwDecodeCombo);
+    pf->addRow(i.get(QStringLiteral("pref_hw_decode")), m_hwDecodeCombo);
 
     m_extraArgsEdit = new QLineEdit(config.mpvExtraArgs);
     m_extraArgsEdit->setPlaceholderText(QStringLiteral("key=value key2=value2 …"));
-    pf->addRow(Localization::text(lang, QStringLiteral("Ekstra MPV Seçenekleri:"), QStringLiteral("Extra MPV Options:")), m_extraArgsEdit);
+    pf->addRow(i.get(QStringLiteral("pref_extra_mpv")), m_extraArgsEdit);
 
-    m_minimizeTrayCheck = new QCheckBox(Localization::text(lang, QStringLiteral("Kapatınca sistem tepsisine küçült"), QStringLiteral("Minimize to tray on close")));
+    m_minimizeTrayCheck = new QCheckBox(i.get(QStringLiteral("pref_minimize_tray")));
     m_minimizeTrayCheck->setChecked(config.minimizeToTray);
     pf->addRow(m_minimizeTrayCheck);
 
-    m_statePersistenceCheck = new QCheckBox(Localization::text(lang, QStringLiteral("Kaldığın Yerden Devam Et (son kanal, kategori, ses seviyesi)"), QStringLiteral("Resume Where You Left Off (last channel, category, volume)")));
+    m_statePersistenceCheck = new QCheckBox(i.get(QStringLiteral("pref_state_persistence")));
     m_statePersistenceCheck->setChecked(config.statePersistence);
     pf->addRow(m_statePersistenceCheck);
 
     auto *recordPathRow = new QHBoxLayout;
     m_recordPathEdit = new QLineEdit(config.recordPath);
-    m_recordPathEdit->setPlaceholderText(Localization::text(lang, QStringLiteral("Varsayılan: Videolar klasörü"), QStringLiteral("Default: Movies folder")));
-    auto *browseRecordBtn = new QPushButton(Localization::text(lang, QStringLiteral("Gözat"), QStringLiteral("Browse")));
+    m_recordPathEdit->setPlaceholderText(i.get(QStringLiteral("pref_record_path_placeholder")));
+    auto *browseRecordBtn = new QPushButton(i.get(QStringLiteral("pref_browse")));
     connect(browseRecordBtn, &QPushButton::clicked, this, &SettingsDialog::onBrowseRecordPath);
     recordPathRow->addWidget(m_recordPathEdit);
     recordPathRow->addWidget(browseRecordBtn);
-    pf->addRow(Localization::text(lang, QStringLiteral("Kayıt Konumu:"), QStringLiteral("Recording Path:")), recordPathRow);
+    pf->addRow(i.get(QStringLiteral("pref_record_path")), recordPathRow);
 
     lay->addWidget(playerGroup);
 
     // ── Theme group ───────────────────────────────────────────────────
-    auto *themeGroup = new QGroupBox(Localization::text(lang, QStringLiteral("Görünüm"), QStringLiteral("Appearance")));
+    auto *themeGroup = new QGroupBox(i.get(QStringLiteral("pref_appearance")));
     auto *tf         = new QFormLayout(themeGroup);
 
     m_themeModeCombo = new QComboBox;
-    m_themeModeCombo->addItem(Localization::text(lang, QStringLiteral("Koyu Tema"), QStringLiteral("Dark Theme")), 0);
-    m_themeModeCombo->addItem(Localization::text(lang, QStringLiteral("Açık Tema"), QStringLiteral("Light Theme")), 1);
+    m_themeModeCombo->addItem(i.get(QStringLiteral("pref_dark_theme")), 0);
+    m_themeModeCombo->addItem(i.get(QStringLiteral("pref_light_theme")), 1);
     m_themeModeCombo->setCurrentIndex(config.themeMode);
-    tf->addRow(Localization::text(lang, QStringLiteral("Tema:"), QStringLiteral("Theme:")), m_themeModeCombo);
+    tf->addRow(i.get(QStringLiteral("pref_theme")), m_themeModeCombo);
 
     m_accentColorEdit = new QLineEdit(config.accentColor);
-    m_accentColorEdit->setPlaceholderText(Localization::text(
-        lang,
-        QStringLiteral("#RRGGBB formatında (Örn: #BB86FC)"),
-        QStringLiteral("#RRGGBB format (e.g. #BB86FC)")
-    ));
-    tf->addRow(Localization::text(lang, QStringLiteral("Vurgu Rengi:"), QStringLiteral("Accent Color:")), m_accentColorEdit);
+    m_accentColorEdit->setPlaceholderText(i.get(QStringLiteral("pref_accent_placeholder")));
+    tf->addRow(i.get(QStringLiteral("pref_accent_color")), m_accentColorEdit);
 
     lay->addWidget(themeGroup);
     lay->addStretch();
-    tabs->addTab(generalTab, Localization::text(lang, QStringLiteral("Genel"), QStringLiteral("General")));
+    tabs->addTab(generalTab, i.get(QStringLiteral("pref_general")));
 
     // ── Shortcuts Tab ─────────────────────────────────────────────────
     auto *shortcutsTab = new QWidget;
     auto *scLay        = new QFormLayout(shortcutsTab);
-    
-    struct ShortcutItem { QString id; QString tr; QString en; };
+
+    struct ShortcutItem { QString id; QString key; };
     const QList<ShortcutItem> scNames = {
-        {QStringLiteral("play_pause"), QStringLiteral("Oynat / Duraklat"), QStringLiteral("Play / Pause")},
-        {QStringLiteral("fullscreen"), QStringLiteral("Tam Ekran"), QStringLiteral("Fullscreen")},
-        {QStringLiteral("mute"),       QStringLiteral("Sesi Kapat/Aç"), QStringLiteral("Mute / Unmute")},
-        {QStringLiteral("vol_up"),     QStringLiteral("Sesi Artır"), QStringLiteral("Volume Up")},
-        {QStringLiteral("vol_down"),   QStringLiteral("Sesi Azalt"), QStringLiteral("Volume Down")},
-        {QStringLiteral("ch_next"),    QStringLiteral("Sonraki Kanal"), QStringLiteral("Next Channel")},
-        {QStringLiteral("ch_prev"),    QStringLiteral("Önceki Kanal"), QStringLiteral("Previous Channel")},
-        {QStringLiteral("info"),       QStringLiteral("Medya Bilgisi Göster"), QStringLiteral("Show Media Info")},
-        {QStringLiteral("audio"),      QStringLiteral("Ses Parçası Seç"), QStringLiteral("Select Audio Track")},
-        {QStringLiteral("subs"),       QStringLiteral("Altyazı Seç"), QStringLiteral("Select Subtitle")},
-        {QStringLiteral("favorite"),   QStringLiteral("Favoriye Ekle/Çıkar"), QStringLiteral("Toggle Favorite")},
+        {QStringLiteral("play_pause"), QStringLiteral("sc_play_pause")},
+        {QStringLiteral("fullscreen"), QStringLiteral("sc_fullscreen")},
+        {QStringLiteral("mute"),       QStringLiteral("sc_mute")},
+        {QStringLiteral("vol_up"),     QStringLiteral("sc_vol_up")},
+        {QStringLiteral("vol_down"),   QStringLiteral("sc_vol_down")},
+        {QStringLiteral("ch_next"),    QStringLiteral("sc_ch_next")},
+        {QStringLiteral("ch_prev"),    QStringLiteral("sc_ch_prev")},
+        {QStringLiteral("info"),       QStringLiteral("sc_info")},
+        {QStringLiteral("audio"),      QStringLiteral("sc_audio")},
+        {QStringLiteral("subs"),       QStringLiteral("sc_subs")},
+        {QStringLiteral("favorite"),   QStringLiteral("sc_favorite")},
     };
 
     for (const auto &item : scNames) {
         auto *edit = new QKeySequenceEdit(shortcutsTab);
         edit->setKeySequence(QKeySequence::fromString(config.shortcuts.value(item.id)));
         m_shortcutEdits.insert(item.id, edit);
-        scLay->addRow(Localization::text(lang, item.tr, item.en) + QStringLiteral(":"), edit);
+        scLay->addRow(i.get(item.key) + QStringLiteral(":"), edit);
     }
-    tabs->addTab(shortcutsTab, Localization::text(lang, QStringLiteral("Kısayollar"), QStringLiteral("Shortcuts")));
+    tabs->addTab(shortcutsTab, i.get(QStringLiteral("pref_shortcuts")));
 
     auto *btns = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
     mainLay->addWidget(btns);
@@ -143,7 +139,7 @@ void SettingsDialog::applyTo(Config &config) const
     if (config.accentColor.isEmpty()) {
         config.accentColor = QStringLiteral("#BB86FC");
     }
-        
+
     for (auto it = m_shortcutEdits.constBegin(); it != m_shortcutEdits.constEnd(); ++it) {
         config.shortcuts.insert(it.key(), it.value()->keySequence().toString());
     }
@@ -153,13 +149,9 @@ void SettingsDialog::applyTo(Config &config) const
 
 void SettingsDialog::onBrowseRecordPath()
 {
-    const QString dialogTitle = Localization::text(
-        m_languageCombo->currentData().toString(),
-        QStringLiteral("Kayıt Konumunu Seç"),
-        QStringLiteral("Select Recording Folder")
-    );
-    const QString dir = QFileDialog::getExistingDirectory(this, dialogTitle,
-                                                          m_recordPathEdit->text());
+    const QString dir = QFileDialog::getExistingDirectory(this,
+        I18n::instance().get(QStringLiteral("pref_select_record_folder")),
+        m_recordPathEdit->text());
     if (!dir.isEmpty()) {
         m_recordPathEdit->setText(dir);
     }

@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>logo_concept1.svg</file>
+        <file>translations/en.json</file>
+        <file>translations/tr.json</file>
     </qresource>
 </RCC>

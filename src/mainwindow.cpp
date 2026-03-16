@@ -55,6 +55,8 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_epg(new EpgManager(this))
 {
+    I18n::instance().setLanguage(m_config.language);
+
     setWindowTitle(QStringLiteral("Vibestreamer"));
     resize(m_config.windowWidth, m_config.windowHeight);
 
@@ -73,7 +75,7 @@ MainWindow::MainWindow(QWidget *parent)
             updateEpgPanel(m_currentChannel);
     });
     connect(m_epg, &EpgManager::loadError, this, [this](const QString &err) {
-        statusBar()->showMessage(t(QStringLiteral("EPG yükleme hatası: "), QStringLiteral("EPG load error: ")) + err, 6000);
+        statusBar()->showMessage(t(QStringLiteral("epg_load_error")) + err, 6000);
     });
 
     // Auto-refresh EPG every 5 minutes
@@ -94,61 +96,61 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow() = default;
 
-QString MainWindow::t(const QString &tr, const QString &en) const
+QString MainWindow::t(const QString &key) const
 {
-    return Localization::text(m_config.language, tr, en);
+    return I18n::instance().get(key);
 }
 
 void MainWindow::retranslateUi()
 {
     if (m_typeTab) {
-        m_typeTab->setTabText(0, t(QStringLiteral("Canli"), QStringLiteral("Live")));
-        m_typeTab->setTabText(1, t(QStringLiteral("Film"), QStringLiteral("Movies")));
-        m_typeTab->setTabText(2, t(QStringLiteral("Dizi"), QStringLiteral("Series")));
+        m_typeTab->setTabText(0, t(QStringLiteral("tab_live")));
+        m_typeTab->setTabText(1, t(QStringLiteral("tab_movies")));
+        m_typeTab->setTabText(2, t(QStringLiteral("tab_series")));
     }
 
-    if (m_addSourceBtn) m_addSourceBtn->setToolTip(t(QStringLiteral("Kaynak ekle"), QStringLiteral("Add source")));
-    if (m_editSourceBtn) m_editSourceBtn->setToolTip(t(QStringLiteral("Kaynağı düzenle"), QStringLiteral("Edit source")));
-    if (m_delSourceBtn) m_delSourceBtn->setToolTip(t(QStringLiteral("Kaynağı sil"), QStringLiteral("Delete source")));
-    if (m_channelHeaderLabel) m_channelHeaderLabel->setText(t(QStringLiteral("Kanallar"), QStringLiteral("Channels")));
-    if (m_searchEdit) m_searchEdit->setPlaceholderText(t(QStringLiteral("Kanal ara..."), QStringLiteral("Search channel...")));
+    if (m_addSourceBtn) m_addSourceBtn->setToolTip(t(QStringLiteral("add_source")));
+    if (m_editSourceBtn) m_editSourceBtn->setToolTip(t(QStringLiteral("edit_source")));
+    if (m_delSourceBtn) m_delSourceBtn->setToolTip(t(QStringLiteral("delete_source")));
+    if (m_channelHeaderLabel) m_channelHeaderLabel->setText(t(QStringLiteral("channels")));
+    if (m_searchEdit) m_searchEdit->setPlaceholderText(t(QStringLiteral("search_channel")));
 
     if (m_viewModeCombo) {
         const int mode = m_viewModeCombo->currentIndex();
-        m_viewModeCombo->setItemText(0, t(QStringLiteral("Liste"), QStringLiteral("List")));
+        m_viewModeCombo->setItemText(0, t(QStringLiteral("list")));
         m_viewModeCombo->setItemText(1, QStringLiteral("Grid"));
-        m_viewModeCombo->setToolTip(t(QStringLiteral("Görünüm Modu"), QStringLiteral("View Mode")));
+        m_viewModeCombo->setToolTip(t(QStringLiteral("view_mode")));
         m_viewModeCombo->setCurrentIndex(mode);
     }
 
-    if (m_prevChBtn) m_prevChBtn->setToolTip(t(QStringLiteral("Onceki kanal (P)"), QStringLiteral("Previous channel (P)")));
-    if (m_skipBackBtn) m_skipBackBtn->setToolTip(t(QStringLiteral("10 sn geri"), QStringLiteral("Back 10s")));
-    if (m_playPauseBtn) m_playPauseBtn->setToolTip(t(QStringLiteral("Oynat / Duraklat"), QStringLiteral("Play / Pause")));
-    if (m_skipFwdBtn) m_skipFwdBtn->setToolTip(t(QStringLiteral("10 sn ileri"), QStringLiteral("Forward 10s")));
-    if (m_nextChBtn) m_nextChBtn->setToolTip(t(QStringLiteral("Sonraki kanal (N)"), QStringLiteral("Next channel (N)")));
-    if (m_volumeSlider) m_volumeSlider->setToolTip(t(QStringLiteral("Ses"), QStringLiteral("Volume")));
-    if (m_audioBtn) m_audioBtn->setToolTip(t(QStringLiteral("Ses parcasi sec (A)"), QStringLiteral("Select audio track (A)")));
-    if (m_subBtn) m_subBtn->setToolTip(t(QStringLiteral("Altyazi sec (S)"), QStringLiteral("Select subtitle (S)")));
-    if (m_infoBtn) m_infoBtn->setToolTip(t(QStringLiteral("Medya bilgisi (I)"), QStringLiteral("Media info (I)")));
-    if (m_speedCombo) m_speedCombo->setToolTip(t(QStringLiteral("Oynatma hizi"), QStringLiteral("Playback speed")));
-    if (m_favoriteBtn) m_favoriteBtn->setToolTip(t(QStringLiteral("Favorilere ekle / cikar (F)"), QStringLiteral("Toggle favorite (F)")));
-    if (m_multiViewBtn) m_multiViewBtn->setToolTip(t(QStringLiteral("Çoklu Ekran (Multi-View)"), QStringLiteral("Multi-View")));
-    if (m_epgToggleBtn) m_epgToggleBtn->setToolTip(t(QStringLiteral("EPG panelini goster/gizle"), QStringLiteral("Show/hide EPG panel")));
-    if (m_pipBtn) m_pipBtn->setToolTip(t(QStringLiteral("Resim icinde resim"), QStringLiteral("Picture in picture")));
-    if (m_fullscreenBtn) m_fullscreenBtn->setToolTip(t(QStringLiteral("Tam ekran (F11)"), QStringLiteral("Fullscreen (F11)")));
+    if (m_prevChBtn) m_prevChBtn->setToolTip(t(QStringLiteral("prev_channel")));
+    if (m_skipBackBtn) m_skipBackBtn->setToolTip(t(QStringLiteral("back_10s")));
+    if (m_playPauseBtn) m_playPauseBtn->setToolTip(t(QStringLiteral("play_pause")));
+    if (m_skipFwdBtn) m_skipFwdBtn->setToolTip(t(QStringLiteral("forward_10s")));
+    if (m_nextChBtn) m_nextChBtn->setToolTip(t(QStringLiteral("next_channel")));
+    if (m_volumeSlider) m_volumeSlider->setToolTip(t(QStringLiteral("volume")));
+    if (m_audioBtn) m_audioBtn->setToolTip(t(QStringLiteral("select_audio")));
+    if (m_subBtn) m_subBtn->setToolTip(t(QStringLiteral("select_subtitle")));
+    if (m_infoBtn) m_infoBtn->setToolTip(t(QStringLiteral("media_info")));
+    if (m_speedCombo) m_speedCombo->setToolTip(t(QStringLiteral("playback_speed")));
+    if (m_favoriteBtn) m_favoriteBtn->setToolTip(t(QStringLiteral("toggle_favorite")));
+    if (m_multiViewBtn) m_multiViewBtn->setToolTip(t(QStringLiteral("multi_view")));
+    if (m_epgToggleBtn) m_epgToggleBtn->setToolTip(t(QStringLiteral("epg_toggle")));
+    if (m_pipBtn) m_pipBtn->setToolTip(t(QStringLiteral("pip")));
+    if (m_fullscreenBtn) m_fullscreenBtn->setToolTip(t(QStringLiteral("fullscreen")));
     if (m_recordBtn) {
         if (m_isRecording)
-            m_recordBtn->setToolTip(t(QStringLiteral("Kayıt devam ediyor"), QStringLiteral("Recording in progress")));
+            m_recordBtn->setToolTip(t(QStringLiteral("recording_in_progress")));
         else
-            m_recordBtn->setToolTip(t(QStringLiteral("Kaydı Başlat"), QStringLiteral("Start recording")));
+            m_recordBtn->setToolTip(t(QStringLiteral("start_recording")));
     }
     if (m_recordPauseBtn) {
         if (m_recordPaused)
-            m_recordPauseBtn->setToolTip(t(QStringLiteral("Kaydı Devam Ettir"), QStringLiteral("Resume recording")));
+            m_recordPauseBtn->setToolTip(t(QStringLiteral("resume_recording")));
         else
-            m_recordPauseBtn->setToolTip(t(QStringLiteral("Kaydı Duraklat"), QStringLiteral("Pause recording")));
+            m_recordPauseBtn->setToolTip(t(QStringLiteral("pause_recording")));
     }
-    if (m_recordStopBtn) m_recordStopBtn->setToolTip(t(QStringLiteral("Kaydı Durdur"), QStringLiteral("Stop recording")));
+    if (m_recordStopBtn) m_recordStopBtn->setToolTip(t(QStringLiteral("stop_recording")));
 
     if (m_catModel) {
         for (int i = 0; i < m_catModel->rowCount(); ++i) {
@@ -156,9 +158,9 @@ void MainWindow::retranslateUi()
             if (!item) continue;
             const QString key = item->data(Qt::UserRole).toString();
             if (key == QStringLiteral("__FAVORITES__"))
-                item->setText(t(QStringLiteral("★ Favoriler"), QStringLiteral("★ Favorites")));
+                item->setText(t(QStringLiteral("favorites")));
             else if (key.isEmpty())
-                item->setText(t(QStringLiteral("Tümü"), QStringLiteral("All")));
+                item->setText(t(QStringLiteral("all")));
         }
     }
 
@@ -172,18 +174,18 @@ void MainWindow::retranslateUi()
         }
 
         auto *trayMenu = new QMenu(this);
-        auto *toggleAct = new QAction(t(QStringLiteral("Arayüzü Göster/Gizle"), QStringLiteral("Show/Hide Interface")), trayMenu);
+        auto *toggleAct = new QAction(t(QStringLiteral("show_hide_interface")), trayMenu);
         connect(toggleAct, &QAction::triggered, this, [this]{
             if (isVisible()) hide();
             else { showNormal(); raise(); activateWindow(); }
         });
 
-        auto *muteAct = new QAction(t(QStringLiteral("Sesi Kapat/Aç"), QStringLiteral("Mute/Unmute")), trayMenu);
+        auto *muteAct = new QAction(t(QStringLiteral("mute_unmute")), trayMenu);
         connect(muteAct, &QAction::triggered, this, [this]{
             if (m_mpv) m_mpv->setVolume(m_mpv->volume() > 0 ? 0 : m_config.volume);
         });
 
-        auto *quitAct = new QAction(t(QStringLiteral("Çıkış"), QStringLiteral("Exit")), trayMenu);
+        auto *quitAct = new QAction(t(QStringLiteral("exit")), trayMenu);
         connect(quitAct, &QAction::triggered, qApp, &QApplication::quit);
 
         trayMenu->addAction(toggleAct);
@@ -382,21 +384,21 @@ void MainWindow::setupSidebar()
     m_addSourceBtn  = new QToolButton;
     m_addSourceBtn->setIcon(Icons::add(m_theme.iconSuccess));
     m_addSourceBtn->setIconSize(QSize(16, 16));
-    m_addSourceBtn->setToolTip(t(QStringLiteral("Kaynak ekle"), QStringLiteral("Add source")));
+    m_addSourceBtn->setToolTip(t(QStringLiteral("add_source")));
     m_addSourceBtn->setFixedSize(30, 30);
     m_addSourceBtn->setStyleSheet(srcBtnStyle);
 
     m_editSourceBtn = new QToolButton;
     m_editSourceBtn->setIcon(Icons::edit(m_theme.iconDefault));
     m_editSourceBtn->setIconSize(QSize(16, 16));
-    m_editSourceBtn->setToolTip(t(QStringLiteral("Kaynağı düzenle"), QStringLiteral("Edit source")));
+    m_editSourceBtn->setToolTip(t(QStringLiteral("edit_source")));
     m_editSourceBtn->setFixedSize(30, 30);
     m_editSourceBtn->setStyleSheet(srcBtnStyle);
 
     m_delSourceBtn  = new QToolButton;
     m_delSourceBtn->setIcon(Icons::trash(m_theme.iconError));
     m_delSourceBtn->setIconSize(QSize(16, 16));
-    m_delSourceBtn->setToolTip(t(QStringLiteral("Kaynağı sil"), QStringLiteral("Delete source")));
+    m_delSourceBtn->setToolTip(t(QStringLiteral("delete_source")));
     m_delSourceBtn->setFixedSize(30, 30);
     m_delSourceBtn->setStyleSheet(srcBtnStyle);
     srcRow->addWidget(m_sourceCombo, 1);
@@ -419,9 +421,9 @@ void MainWindow::setupSidebar()
     // Stream type tabs
     m_typeTab = new QTabWidget;
     m_typeTab->setDocumentMode(true);
-    m_typeTab->addTab(new QWidget, t(QStringLiteral("Canli"), QStringLiteral("Live")));
-    m_typeTab->addTab(new QWidget, t(QStringLiteral("Film"), QStringLiteral("Movies")));
-    m_typeTab->addTab(new QWidget, t(QStringLiteral("Dizi"), QStringLiteral("Series")));
+    m_typeTab->addTab(new QWidget, t(QStringLiteral("tab_live")));
+    m_typeTab->addTab(new QWidget, t(QStringLiteral("tab_movies")));
+    m_typeTab->addTab(new QWidget, t(QStringLiteral("tab_series")));
     lay->addWidget(m_typeTab);
 
     // Inner splitter: category | channel
@@ -438,7 +440,7 @@ void MainWindow::setupSidebar()
     chLay->setSpacing(4);
 
     // Section header between categories and channels
-    m_channelHeaderLabel = new QLabel(t(QStringLiteral("Kanallar"), QStringLiteral("Channels")));
+    m_channelHeaderLabel = new QLabel(t(QStringLiteral("channels")));
     m_channelHeaderLabel->setStyleSheet(QStringLiteral(
         "color: %1; font-size: 10px; font-weight: bold; "
         "text-transform: uppercase; padding: 6px 4px 2px 4px; "
@@ -449,7 +451,7 @@ void MainWindow::setupSidebar()
     filterLay->setContentsMargins(0, 0, 0, 0);
 
     m_searchEdit = new QLineEdit;
-    m_searchEdit->setPlaceholderText(t(QStringLiteral("Kanal ara..."), QStringLiteral("Search channel...")));
+    m_searchEdit->setPlaceholderText(t(QStringLiteral("search_channel")));
     m_searchEdit->setClearButtonEnabled(true);
 
     // Setup Search History Completer
@@ -475,9 +477,9 @@ void MainWindow::setupSidebar()
     filterLay->addWidget(m_searchEdit, 1);
 
     m_viewModeCombo = new QComboBox;
-    m_viewModeCombo->addItem(t(QStringLiteral("Liste"), QStringLiteral("List")));
+    m_viewModeCombo->addItem(t(QStringLiteral("list")));
     m_viewModeCombo->addItem(QStringLiteral("Grid"));
-    m_viewModeCombo->setToolTip(t(QStringLiteral("Görünüm Modu"), QStringLiteral("View Mode")));
+    m_viewModeCombo->setToolTip(t(QStringLiteral("view_mode")));
     filterLay->addWidget(m_viewModeCombo);
 
     chLay->addLayout(filterLay);
@@ -513,10 +515,10 @@ void MainWindow::setupSidebar()
         if (!item.isValid()) return;
 
         QMenu menu(this);
-        auto *mvMenu = menu.addMenu(Icons::gridView(m_theme.iconDefault), t(QStringLiteral("Çoklu Ekrana Gönder..."), QStringLiteral("Send to Multi View...")));
+        auto *mvMenu = menu.addMenu(Icons::gridView(m_theme.iconDefault), t(QStringLiteral("send_to_multiview")));
 
         for (int i = 0; i < 4; ++i) {
-            auto *action = mvMenu->addAction(t(QStringLiteral("Ekran %1"), QStringLiteral("Screen %1")).arg(i + 1));
+            auto *action = mvMenu->addAction(t(QStringLiteral("screen_n")).arg(i + 1));
             connect(action, &QAction::triggered, this, [this, item, i]() {
                 const QString url = item.data(Qt::UserRole).toString();
                 Channel ch;
@@ -576,9 +578,8 @@ void MainWindow::setupPlayerPanel()
             }
         }
     } catch (const std::exception &e) {
-                QMessageBox::critical(this, t(QStringLiteral("Kritik Hata"), QStringLiteral("Critical Error")),
-                        t(QStringLiteral("Video oynatıcı başlatılamadı:\n%1\n\nLütfen grafik sürücülerinizi kontrol edin."),
-                            QStringLiteral("Video player could not be initialized:\n%1\n\nPlease check your graphics drivers.")).arg(e.what()));
+                QMessageBox::critical(this, t(QStringLiteral("critical_error")),
+                        t(QStringLiteral("player_init_error")).arg(e.what()));
         m_mpv = nullptr;
     }
 
@@ -593,11 +594,10 @@ void MainWindow::setupPlayerPanel()
         // Non-blocking error handler — avoids freeze on bad channels
         connect(m_mpv, &MpvWidget::errorOccurred, this, [this](const QString &msg){
             m_mpv->stop(); // Stop playback to prevent further errors
-            statusBar()->showMessage(t(QStringLiteral("Oynatma hatası: "), QStringLiteral("Playback error: ")) + msg, 8000);
+            statusBar()->showMessage(t(QStringLiteral("playback_error")) + msg, 8000);
         });
     } else {
-        auto *errLbl = new QLabel(t(QStringLiteral("Oynatıcı Yüklenemedi\n(Grafik sürücü hatası)"),
-                        QStringLiteral("Player Failed to Load\n(Graphics driver error)")));
+        auto *errLbl = new QLabel(t(QStringLiteral("player_load_failed")));
         errLbl->setAlignment(Qt::AlignCenter);
         errLbl->setStyleSheet(QStringLiteral("color: %1; font-size: 16px; font-weight: bold;").arg(m_theme.error));
         lay->addWidget(errLbl, 1);
@@ -679,16 +679,16 @@ void MainWindow::setupControlBar()
     };
 
     // ── Playback group ──
-    m_prevChBtn    = makeBtn(Icons::skipPrevious(m_theme.iconDefault), t(QStringLiteral("Onceki kanal (P)"), QStringLiteral("Previous channel (P)")), 30);
-    m_skipBackBtn  = makeBtn(Icons::rewind(m_theme.iconDefault),       t(QStringLiteral("10 sn geri"), QStringLiteral("Back 10s")), 30);
-    m_playPauseBtn = makeBtn(Icons::play(m_theme.iconAccent),          t(QStringLiteral("Oynat / Duraklat"), QStringLiteral("Play / Pause")), 36);
-    m_skipFwdBtn   = makeBtn(Icons::fastForward(m_theme.iconDefault),  t(QStringLiteral("10 sn ileri"), QStringLiteral("Forward 10s")), 30);
-    m_recordBtn      = makeBtn(Icons::record(m_theme.iconRecord),       t(QStringLiteral("Kaydı Başlat"), QStringLiteral("Start recording")), 30);
-    m_recordPauseBtn = makeBtn(Icons::pause(m_theme.iconDefault),       t(QStringLiteral("Kaydı Duraklat"), QStringLiteral("Pause recording")), 30);
-    m_recordStopBtn  = makeBtn(Icons::stop(m_theme.iconError),          t(QStringLiteral("Kaydı Durdur"), QStringLiteral("Stop recording")), 30);
+    m_prevChBtn    = makeBtn(Icons::skipPrevious(m_theme.iconDefault), t(QStringLiteral("prev_channel")), 30);
+    m_skipBackBtn  = makeBtn(Icons::rewind(m_theme.iconDefault),       t(QStringLiteral("back_10s")), 30);
+    m_playPauseBtn = makeBtn(Icons::play(m_theme.iconAccent),          t(QStringLiteral("play_pause")), 36);
+    m_skipFwdBtn   = makeBtn(Icons::fastForward(m_theme.iconDefault),  t(QStringLiteral("forward_10s")), 30);
+    m_recordBtn      = makeBtn(Icons::record(m_theme.iconRecord),       t(QStringLiteral("start_recording")), 30);
+    m_recordPauseBtn = makeBtn(Icons::pause(m_theme.iconDefault),       t(QStringLiteral("pause_recording")), 30);
+    m_recordStopBtn  = makeBtn(Icons::stop(m_theme.iconError),          t(QStringLiteral("stop_recording")), 30);
     m_recordPauseBtn->setVisible(false);
     m_recordStopBtn->setVisible(false);
-    m_nextChBtn    = makeBtn(Icons::skipNext(m_theme.iconDefault),     t(QStringLiteral("Sonraki kanal (N)"), QStringLiteral("Next channel (N)")), 30);
+    m_nextChBtn    = makeBtn(Icons::skipNext(m_theme.iconDefault),     t(QStringLiteral("next_channel")), 30);
 
     // ── Seek + time ──
     m_seekSlider = new QSlider(Qt::Horizontal);
@@ -719,12 +719,12 @@ void MainWindow::setupControlBar()
     m_volumeSlider->setRange(0, 100);
     m_volumeSlider->setValue(m_config.statePersistence ? m_config.volume : 100);
     m_volumeSlider->setFixedWidth(75);
-    m_volumeSlider->setToolTip(t(QStringLiteral("Ses"), QStringLiteral("Volume")));
+    m_volumeSlider->setToolTip(t(QStringLiteral("volume")));
 
     // ── Track / tools group ──
-    m_audioBtn   = makeBtn(Icons::audioTrack(m_theme.iconDefault),     t(QStringLiteral("Ses parcasi sec (A)"), QStringLiteral("Select audio track (A)")), 32);
-    m_subBtn     = makeBtn(Icons::closedCaption(m_theme.iconDefault),  t(QStringLiteral("Altyazi sec (S)"), QStringLiteral("Select subtitle (S)")), 32);
-    m_infoBtn    = makeBtn(Icons::info(m_theme.iconDefault),           t(QStringLiteral("Medya bilgisi (I)"), QStringLiteral("Media info (I)")), 28);
+    m_audioBtn   = makeBtn(Icons::audioTrack(m_theme.iconDefault),     t(QStringLiteral("select_audio")), 32);
+    m_subBtn     = makeBtn(Icons::closedCaption(m_theme.iconDefault),  t(QStringLiteral("select_subtitle")), 32);
+    m_infoBtn    = makeBtn(Icons::info(m_theme.iconDefault),           t(QStringLiteral("media_info")), 28);
 
     m_speedCombo = new QComboBox;
     m_speedCombo->addItems({QStringLiteral("0.5x"), QStringLiteral("0.75x"),
@@ -732,14 +732,14 @@ void MainWindow::setupControlBar()
                             QStringLiteral("1.5x"), QStringLiteral("2x")});
     m_speedCombo->setCurrentIndex(2);
     m_speedCombo->setFixedWidth(58);
-    m_speedCombo->setToolTip(t(QStringLiteral("Oynatma hizi"), QStringLiteral("Playback speed")));
+    m_speedCombo->setToolTip(t(QStringLiteral("playback_speed")));
 
     // ── Utility group ──
-    m_favoriteBtn   = makeBtn(Icons::starOutline(m_theme.iconDefault),      t(QStringLiteral("Favorilere ekle / cikar (F)"), QStringLiteral("Toggle favorite (F)")), 32);
-    m_multiViewBtn  = makeBtn(Icons::gridView(m_theme.iconDefault),         t(QStringLiteral("Çoklu Ekran (Multi-View)"), QStringLiteral("Multi-View")), 32);
-    m_epgToggleBtn  = makeBtn(Icons::tvGuide(m_theme.iconDefault),          t(QStringLiteral("EPG panelini goster/gizle"), QStringLiteral("Show/hide EPG panel")), 32);
-    m_pipBtn        = makeBtn(Icons::pictureInPicture(m_theme.iconDefault), t(QStringLiteral("Resim icinde resim"), QStringLiteral("Picture in picture")), 32);
-    m_fullscreenBtn = makeBtn(Icons::fullscreen(m_theme.iconDefault),       t(QStringLiteral("Tam ekran (F11)"), QStringLiteral("Fullscreen (F11)")), 32);
+    m_favoriteBtn   = makeBtn(Icons::starOutline(m_theme.iconDefault),      t(QStringLiteral("toggle_favorite")), 32);
+    m_multiViewBtn  = makeBtn(Icons::gridView(m_theme.iconDefault),         t(QStringLiteral("multi_view")), 32);
+    m_epgToggleBtn  = makeBtn(Icons::tvGuide(m_theme.iconDefault),          t(QStringLiteral("epg_toggle")), 32);
+    m_pipBtn        = makeBtn(Icons::pictureInPicture(m_theme.iconDefault), t(QStringLiteral("pip")), 32);
+    m_fullscreenBtn = makeBtn(Icons::fullscreen(m_theme.iconDefault),       t(QStringLiteral("fullscreen")), 32);
 
     // ── Layout ──
     // ── Playback group ──
@@ -807,54 +807,29 @@ void MainWindow::setupControlBar()
 
 void MainWindow::setupMenuBar()
 {
-    auto *fileMenu = menuBar()->addMenu(t(QStringLiteral("Dosya"), QStringLiteral("File")));
-    fileMenu->addAction(t(QStringLiteral("Kaynak Ekle…"), QStringLiteral("Add Source…")),  this, &MainWindow::onAddSource);
-    fileMenu->addAction(t(QStringLiteral("Kaynağı Düzenle…"), QStringLiteral("Edit Source…")), this, &MainWindow::onEditSource);
-    fileMenu->addAction(t(QStringLiteral("Kaynağı Sil"), QStringLiteral("Delete Source")),   this, &MainWindow::onRemoveSource);
+    auto *fileMenu = menuBar()->addMenu(t(QStringLiteral("menu_file")));
+    fileMenu->addAction(t(QStringLiteral("menu_add_source")),  this, &MainWindow::onAddSource);
+    fileMenu->addAction(t(QStringLiteral("menu_edit_source")), this, &MainWindow::onEditSource);
+    fileMenu->addAction(t(QStringLiteral("menu_delete_source")),   this, &MainWindow::onRemoveSource);
     fileMenu->addSeparator();
-    fileMenu->addAction(t(QStringLiteral("Çıkış"), QStringLiteral("Exit")), qApp, &QApplication::quit);
+    fileMenu->addAction(t(QStringLiteral("exit")), qApp, &QApplication::quit);
 
-    auto *viewMenu = menuBar()->addMenu(t(QStringLiteral("Görünüm"), QStringLiteral("View")));
-    viewMenu->addAction(t(QStringLiteral("Tam Ekran (F11)"), QStringLiteral("Fullscreen (F11)")), this, &MainWindow::toggleFullScreen);
-    viewMenu->addAction(t(QStringLiteral("EPG Panelini Göster/Gizle"), QStringLiteral("Show/Hide EPG Panel")), this, &MainWindow::onToggleEpg);
+    auto *viewMenu = menuBar()->addMenu(t(QStringLiteral("menu_view")));
+    viewMenu->addAction(t(QStringLiteral("fullscreen")), this, &MainWindow::toggleFullScreen);
+    viewMenu->addAction(t(QStringLiteral("menu_epg_toggle")), this, &MainWindow::onToggleEpg);
 
-    auto *settingsMenu = menuBar()->addMenu(t(QStringLiteral("Ayarlar"), QStringLiteral("Settings")));
-    settingsMenu->addAction(t(QStringLiteral("Tercihler…"), QStringLiteral("Preferences…")), this, &MainWindow::onOpenSettings);
+    auto *settingsMenu = menuBar()->addMenu(t(QStringLiteral("menu_settings")));
+    settingsMenu->addAction(t(QStringLiteral("menu_preferences")), this, &MainWindow::onOpenSettings);
 
-    auto *helpMenu = menuBar()->addMenu(t(QStringLiteral("Yardım"), QStringLiteral("Help")));
-    viewMenu->addAction(t(QStringLiteral("PiP Modu"), QStringLiteral("PiP Mode")), this, &MainWindow::onTogglePip);
+    auto *helpMenu = menuBar()->addMenu(t(QStringLiteral("menu_help")));
+    viewMenu->addAction(t(QStringLiteral("menu_pip")), this, &MainWindow::onTogglePip);
 
-    helpMenu->addAction(t(QStringLiteral("Klavye Kısayolları"), QStringLiteral("Keyboard Shortcuts")), this, [this]() {
-        QMessageBox::information(this, t(QStringLiteral("Klavye Kısayolları"), QStringLiteral("Keyboard Shortcuts")),
-            t(QStringLiteral(
-                "Space        Oynat / Duraklat\n"
-                "F11          Tam Ekran\n"
-                "Escape       Tam Ekrandan Çık\n"
-                "M            Sessiz Aç / Kapat\n"
-                "←  →         10 Saniye Geri / İleri\n"
-                "↑  ↓         Ses +5 / -5\n"
-                "F            Favori Ekle / Çıkar\n"
-                "N            Sonraki Kanal\n"
-                "P            Önceki Kanal\n"
-                "I            Medya Bilgisi\n"
-                "A            Ses Parçası Seç\n"
-                "S            Altyazı Seç"),
-              QStringLiteral(
-                "Space        Play / Pause\n"
-                "F11          Fullscreen\n"
-                "Escape       Exit Fullscreen\n"
-                "M            Mute / Unmute\n"
-                "←  →         Seek -10s / +10s\n"
-                "↑  ↓         Volume +5 / -5\n"
-                "F            Toggle Favorite\n"
-                "N            Next Channel\n"
-                "P            Previous Channel\n"
-                "I            Media Info\n"
-                "A            Select Audio Track\n"
-                "S            Select Subtitle")));
+    helpMenu->addAction(t(QStringLiteral("menu_shortcuts")), this, [this]() {
+        QMessageBox::information(this, t(QStringLiteral("menu_shortcuts")),
+            t(QStringLiteral("shortcuts_body")));
     });
     helpMenu->addSeparator();
-    helpMenu->addAction(t(QStringLiteral("Hakkında"), QStringLiteral("About")), this, [this](){
+    helpMenu->addAction(t(QStringLiteral("menu_about")), this, [this](){
         QMessageBox::about(this, QStringLiteral("Vibestreamer"),
             QStringLiteral("Vibestreamer v2.0\nC++ + Qt6 + libmpv"));
     });
@@ -1003,8 +978,8 @@ void MainWindow::onRemoveSource()
 {
     const int idx = m_sourceCombo->currentIndex();
     if (idx < 0 || idx >= m_config.sources.size()) return;
-    if (QMessageBox::question(this, t(QStringLiteral("Sil"), QStringLiteral("Delete")),
-            t(QStringLiteral("Kaynağı silmek istiyor musunuz?"), QStringLiteral("Do you want to delete this source?")))
+    if (QMessageBox::question(this, t(QStringLiteral("delete_title")),
+            t(QStringLiteral("delete_confirm")))
         != QMessageBox::Yes) return;
     m_config.removeSource(m_config.sources[idx].id);
     loadSourceList();
@@ -1018,9 +993,10 @@ void MainWindow::onOpenSettings()
         dlg.applyTo(m_config);
         applyTheme();
         if (previousLanguage != m_config.language) {
+            I18n::instance().setLanguage(m_config.language);
             retranslateUi();
             statusBar()->showMessage(
-                t(QStringLiteral("Dil anında güncellendi."), QStringLiteral("Language updated instantly.")),
+                t(QStringLiteral("language_updated")),
                 2500
             );
         }
@@ -1055,12 +1031,12 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
         m_categories = cats;
         m_catModel->clear();
         QList<QStandardItem*> items;
-        auto *favItem = new QStandardItem(t(QStringLiteral("★ Favoriler"), QStringLiteral("★ Favorites")));
+        auto *favItem = new QStandardItem(t(QStringLiteral("favorites")));
         favItem->setData(QStringLiteral("__FAVORITES__"), Qt::UserRole);
         favItem->setForeground(QBrush(QColor(m_theme.warning)));
         items.append(favItem);
 
-        auto *allItem = new QStandardItem(t(QStringLiteral("Tümü"), QStringLiteral("All")));
+        auto *allItem = new QStandardItem(t(QStringLiteral("all")));
         allItem->setData(QString{}, Qt::UserRole);
         items.append(allItem);
 
@@ -1119,7 +1095,7 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
         return;
     }
 
-    statusBar()->showMessage(t(QStringLiteral("Kategoriler yükleniyor…"), QStringLiteral("Loading categories…")));
+    statusBar()->showMessage(t(QStringLiteral("loading_categories")));
     m_loadingProgress->setVisible(true);
     m_loadingProgress->setRange(0, 0); // indeterminate
 
@@ -1127,7 +1103,7 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
         statusBar()->clearMessage();
         m_loadingProgress->setVisible(false);
         if (!err.isEmpty()) {
-            statusBar()->showMessage(t(QStringLiteral("Kategori yükleme hatası: "), QStringLiteral("Category load error: ")) + err, 6000);
+            statusBar()->showMessage(t(QStringLiteral("category_load_error")) + err, 6000);
             return;
         }
         m_categoryCache.insert(key, cats);
@@ -1240,8 +1216,7 @@ void MainWindow::loadChannels(const QString &categoryId)
 
         if (m_loadingChannels) return;  // prevent duplicate requests
         m_loadingChannels = true;
-        statusBar()->showMessage(t(QStringLiteral("M3U yükleniyor… (Bu işlem birkaç dakika sürebilir)"),
-                       QStringLiteral("Loading M3U… (This may take a few minutes)")));
+        statusBar()->showMessage(t(QStringLiteral("loading_m3u")));
         
         m_loadingProgress->setVisible(true);
         m_loadingProgress->setRange(0, 0); // indeterminate
@@ -1261,7 +1236,7 @@ void MainWindow::loadChannels(const QString &categoryId)
                     m_loadingChannels = false;
                     m_loadingProgress->setVisible(false);
                     statusBar()->showMessage(
-                        t(QStringLiteral("M3U yükleme hatası: "), QStringLiteral("M3U load error: ")) + reply->errorString(), 5000);
+                        t(QStringLiteral("m3u_load_error")) + reply->errorString(), 5000);
                 } else {
                     m_loadingChannels = false;
                 }
@@ -1288,7 +1263,7 @@ void MainWindow::loadChannels(const QString &categoryId)
                     if (isSameSource) {
                         m_loadingChannels = false;
                         m_loadingProgress->setVisible(false);
-                        statusBar()->showMessage(t(QStringLiteral("M3U boş veya geçersiz format"), QStringLiteral("M3U is empty or invalid format")), 4000);
+                        statusBar()->showMessage(t(QStringLiteral("m3u_empty")), 4000);
                     }
                     return;
                 }
@@ -1343,13 +1318,13 @@ void MainWindow::loadChannels(const QString &categoryId)
         m_loadingChannels = true;
         m_loadingProgress->setVisible(true);
         m_loadingProgress->setRange(0, 0);
-        statusBar()->showMessage(t(QStringLiteral("Favoriler yükleniyor…"), QStringLiteral("Loading favorites…")));
+        statusBar()->showMessage(t(QStringLiteral("loading_favorites")));
         auto onAllDone = [this, finalize, allKey](QList<Channel> channels, QString err) {
             m_loadingChannels = false;
             m_loadingProgress->setVisible(false);
             statusBar()->clearMessage();
             if (!err.isEmpty()) {
-                statusBar()->showMessage(t(QStringLiteral("Kanal yükleme hatası: "), QStringLiteral("Channel load error: ")) + err, 6000);
+                statusBar()->showMessage(t(QStringLiteral("channel_load_error")) + err, 6000);
                 return;
             }
             m_channelCache.insert(allKey, channels);
@@ -1370,14 +1345,14 @@ void MainWindow::loadChannels(const QString &categoryId)
     m_loadingChannels = true;
     m_loadingProgress->setVisible(true);
     m_loadingProgress->setRange(0, 0);
-    statusBar()->showMessage(t(QStringLiteral("Kanallar yükleniyor…"), QStringLiteral("Loading channels…")));
+    statusBar()->showMessage(t(QStringLiteral("loading_channels")));
 
     auto onDone = [this, finalize, key](QList<Channel> channels, QString err) {
         m_loadingChannels = false;
         m_loadingProgress->setVisible(false);
         statusBar()->clearMessage();
         if (!err.isEmpty()) {
-            statusBar()->showMessage(t(QStringLiteral("Kanal yükleme hatası: "), QStringLiteral("Channel load error: ")) + err, 6000);
+            statusBar()->showMessage(t(QStringLiteral("channel_load_error")) + err, 6000);
             return;
         }
         m_channelCache.insert(key, channels);
@@ -1527,7 +1502,7 @@ void MainWindow::updateEpgPanel(const Channel &ch)
     const EpgProgram next = m_epg->nextProgram(ch.epgChannelId);
 
     if (cur.title.isEmpty()) {
-        m_epgCurrentLabel->setText(t(QStringLiteral("EPG verisi bulunamadı"), QStringLiteral("No EPG data")));
+        m_epgCurrentLabel->setText(t(QStringLiteral("no_epg_data")));
         m_epgCurrentLabel->setStyleSheet(QStringLiteral(
             "color: %1; font-weight: 500; font-size: 12px; font-style: italic;").arg(m_theme.textDimmed));
         m_epgProgress->setValue(0);
@@ -1548,7 +1523,7 @@ void MainWindow::updateEpgPanel(const Channel &ch)
 
     m_epgNextLabel->setText(next.title.isEmpty()
         ? QString{}
-        : t(QStringLiteral("Sonraki: "), QStringLiteral("Next: ")) + next.title);
+        : t(QStringLiteral("next_prefix")) + next.title);
 }
 
 void MainWindow::refreshEpg()
@@ -1580,7 +1555,7 @@ void MainWindow::onVolumeChanged(int value)
 {
     m_mpv->setVolume(value);
     m_config.volume = value;
-    statusBar()->showMessage(QStringLiteral("Ses: %1%").arg(value), 1500);
+    statusBar()->showMessage(t(QStringLiteral("volume_status")).arg(value), 1500);
 }
 
 void MainWindow::onSpeedChanged(int index)
@@ -1628,8 +1603,8 @@ void MainWindow::checkUpdateSchedules()
             m_m3uCache.remove(src.id);
 
             if (m_trayIcon && m_trayIcon->isVisible()) {
-                m_trayIcon->showMessage(t(QStringLiteral("Playlist Güncellemesi"), QStringLiteral("Playlist Update")), 
-                                        src.name + t(QStringLiteral(" kaynak verileri yenileniyor..."), QStringLiteral(" source data is being refreshed...")), 
+                m_trayIcon->showMessage(t(QStringLiteral("playlist_update")), 
+                                        src.name + t(QStringLiteral("source_refreshing")), 
                                         QSystemTrayIcon::Information, 3000);
             }
 
@@ -1748,7 +1723,7 @@ void MainWindow::onShowAudioMenu()
     for (const TrackInfo &t : tracks) {
         if (t.type != QLatin1String("audio")) continue;
         hasAudio = true;
-        QString label = this->t(QStringLiteral("Parça %1"), QStringLiteral("Track %1")).arg(t.id);
+        QString label = this->t(QStringLiteral("track_n")).arg(t.id);
         if (!t.lang.isEmpty()) label += QStringLiteral(" [%1]").arg(t.lang);
         if (!t.title.isEmpty()) label += QStringLiteral(" - %1").arg(t.title);
         if (!t.codec.isEmpty()) label += QStringLiteral(" (%1)").arg(t.codec);
@@ -1759,7 +1734,7 @@ void MainWindow::onShowAudioMenu()
         connect(act, &QAction::triggered, this, [this, id]{ m_mpv->setAudioTrack(id); });
     }
     if (!hasAudio)
-        menu.addAction(t(QStringLiteral("Ses parçası bulunamadı"), QStringLiteral("No audio tracks found")))->setEnabled(false);
+        menu.addAction(t(QStringLiteral("no_audio_tracks")))->setEnabled(false);
     menu.exec(m_audioBtn->mapToGlobal(QPoint(0, -menu.sizeHint().height())));
 }
 
@@ -1770,7 +1745,7 @@ void MainWindow::onShowSubMenu()
     bool hasSub = false;
 
     // "Off" option
-    QAction *offAct = menu.addAction(t(QStringLiteral("Kapalı"), QStringLiteral("Off")));
+    QAction *offAct = menu.addAction(t(QStringLiteral("subtitle_off")));
     offAct->setCheckable(true);
     bool anySel = false;
 
@@ -1778,7 +1753,7 @@ void MainWindow::onShowSubMenu()
         if (t.type != QLatin1String("sub")) continue;
         hasSub = true;
         if (t.selected) anySel = true;
-        QString label = this->t(QStringLiteral("Altyazı %1"), QStringLiteral("Subtitle %1")).arg(t.id);
+        QString label = this->t(QStringLiteral("subtitle_n")).arg(t.id);
         if (!t.lang.isEmpty()) label += QStringLiteral(" [%1]").arg(t.lang);
         if (!t.title.isEmpty()) label += QStringLiteral(" - %1").arg(t.title);
         QAction *act = menu.addAction(label);
@@ -1793,7 +1768,7 @@ void MainWindow::onShowSubMenu()
     });
 
     if (!hasSub && menu.actions().size() == 1)
-        menu.addAction(t(QStringLiteral("Altyazı bulunamadı"), QStringLiteral("No subtitles found")))->setEnabled(false);
+        menu.addAction(t(QStringLiteral("no_subtitles")))->setEnabled(false);
     menu.exec(m_subBtn->mapToGlobal(QPoint(0, -menu.sizeHint().height())));
 }
 
@@ -1803,7 +1778,7 @@ void MainWindow::onShowMediaInfo()
     QString info;
 
     // General
-    info += t(QStringLiteral("Kanal: %1\n"), QStringLiteral("Channel: %1\n")).arg(m_currentChannel.name);
+    info += t(QStringLiteral("channel_info")).arg(m_currentChannel.name);
     if (!m_currentChannel.streamUrl.isEmpty())
         info += QStringLiteral("URL: %1\n").arg(m_currentChannel.streamUrl);
     info += QLatin1Char('\n');
@@ -1825,7 +1800,7 @@ void MainWindow::onShowMediaInfo()
     info += QLatin1Char('\n');
 
     // All tracks
-    info += t(QStringLiteral("── Parçalar ──\n"), QStringLiteral("── Tracks ──\n"));
+    info += t(QStringLiteral("tracks_header"));
     for (const TrackInfo &t : tracks) {
         QString line = QStringLiteral("#%1 %2").arg(t.id).arg(t.type);
         if (!t.lang.isEmpty()) line += QStringLiteral(" [%1]").arg(t.lang);
@@ -1835,7 +1810,7 @@ void MainWindow::onShowMediaInfo()
         info += line + QLatin1Char('\n');
     }
 
-    QMessageBox::information(this, t(QStringLiteral("Medya Bilgisi"), QStringLiteral("Media Info")), info);
+    QMessageBox::information(this, t(QStringLiteral("media_info_title")), info);
 }
 
 void MainWindow::setupTrayIcon()
@@ -1846,18 +1821,18 @@ void MainWindow::setupTrayIcon()
 
     auto *trayMenu = new QMenu(this);
     
-    auto *toggleAct = new QAction(t(QStringLiteral("Arayüzü Göster/Gizle"), QStringLiteral("Show/Hide Interface")), this);
+    auto *toggleAct = new QAction(t(QStringLiteral("show_hide_interface")), this);
     connect(toggleAct, &QAction::triggered, this, [this]{
         if (isVisible()) hide();
         else { showNormal(); raise(); activateWindow(); }
     });
     
-    auto *muteAct = new QAction(t(QStringLiteral("Sesi Kapat/Aç"), QStringLiteral("Mute/Unmute")), this);
+    auto *muteAct = new QAction(t(QStringLiteral("mute_unmute")), this);
     connect(muteAct, &QAction::triggered, this, [this]{
         if (m_mpv) m_mpv->setVolume(m_mpv->volume() > 0 ? 0 : m_config.volume);
     });
     
-    auto *quitAct = new QAction(t(QStringLiteral("Çıkış"), QStringLiteral("Exit")), this);
+    auto *quitAct = new QAction(t(QStringLiteral("exit")), this);
     connect(quitAct, &QAction::triggered, qApp, &QApplication::quit);
 
     trayMenu->addAction(toggleAct);
@@ -1911,12 +1886,12 @@ void MainWindow::onToggleRecord()
 
     // Update UI: show pause/stop, change record button to active state
     m_recordBtn->setIcon(Icons::record(m_theme.iconError));
-    m_recordBtn->setToolTip(t(QStringLiteral("Kayıt devam ediyor"), QStringLiteral("Recording in progress")));
+    m_recordBtn->setToolTip(t(QStringLiteral("recording_in_progress")));
     m_recordBtn->setStyleSheet(QStringLiteral(
         "QToolButton { background: %1; border-radius: 4px; }").arg(m_theme.errorAlpha));
     m_recordPauseBtn->setVisible(true);
     m_recordStopBtn->setVisible(true);
-    statusBar()->showMessage(t(QStringLiteral("Kayıt başladı: "), QStringLiteral("Recording started: ")) + m_recordFilePath, 5000);
+    statusBar()->showMessage(t(QStringLiteral("recording_started")) + m_recordFilePath, 5000);
 }
 
 void MainWindow::onRecordPauseResume()
@@ -1928,10 +1903,10 @@ void MainWindow::onRecordPauseResume()
         m_mpv->setMpvProperty(QStringLiteral("stream-record"), QString());
         m_recordPaused = true;
         m_recordPauseBtn->setIcon(Icons::play(m_theme.iconAccent));
-        m_recordPauseBtn->setToolTip(t(QStringLiteral("Kaydı Devam Ettir"), QStringLiteral("Resume recording")));
+        m_recordPauseBtn->setToolTip(t(QStringLiteral("resume_recording")));
         m_recordBtn->setIcon(Icons::record(m_theme.iconRecord));
         m_recordBtn->setStyleSheet(QString{});
-        statusBar()->showMessage(t(QStringLiteral("Kayıt duraklatıldı. Dosya: "), QStringLiteral("Recording paused. File: ")) + m_recordFilePath, 5000);
+        statusBar()->showMessage(t(QStringLiteral("recording_paused")) + m_recordFilePath, 5000);
     } else {
         // Resume: start a new segment file
         m_recordSegment++;
@@ -1946,11 +1921,11 @@ void MainWindow::onRecordPauseResume()
         m_mpv->setMpvProperty(QStringLiteral("stream-record"), resumed);
         m_recordPaused = false;
         m_recordPauseBtn->setIcon(Icons::pause(m_theme.iconDefault));
-        m_recordPauseBtn->setToolTip(t(QStringLiteral("Kaydı Duraklat"), QStringLiteral("Pause recording")));
+        m_recordPauseBtn->setToolTip(t(QStringLiteral("pause_recording")));
         m_recordBtn->setIcon(Icons::record(m_theme.iconError));
         m_recordBtn->setStyleSheet(QStringLiteral(
             "QToolButton { background: %1; border-radius: 4px; }").arg(m_theme.errorAlpha));
-        statusBar()->showMessage(t(QStringLiteral("Kayıt devam ediyor: "), QStringLiteral("Recording resumed: ")) + resumed, 5000);
+        statusBar()->showMessage(t(QStringLiteral("recording_resumed")) + resumed, 5000);
     }
 }
 
@@ -1965,12 +1940,12 @@ void MainWindow::onRecordStop()
 
     // Reset UI
     m_recordBtn->setIcon(Icons::record(m_theme.iconRecord));
-    m_recordBtn->setToolTip(t(QStringLiteral("Kaydı Başlat"), QStringLiteral("Start recording")));
+    m_recordBtn->setToolTip(t(QStringLiteral("start_recording")));
     m_recordBtn->setStyleSheet(QString{});
     m_recordPauseBtn->setVisible(false);
     m_recordStopBtn->setVisible(false);
 
-    statusBar()->showMessage(t(QStringLiteral("Kayıt kaydedildi: "), QStringLiteral("Recording saved: ")) + m_recordFilePath, 8000);
+    statusBar()->showMessage(t(QStringLiteral("recording_saved")) + m_recordFilePath, 8000);
     m_recordFilePath.clear();
     m_recordSegment = 0;
 }
@@ -2098,7 +2073,7 @@ void MainWindow::onTogglePip()
             .arg(m_theme.bgInput, m_theme.hoverBg);
 
         auto *backBtn = new QToolButton;
-        backBtn->setText(t(QStringLiteral("← Geri"), QStringLiteral("← Back")));
+        backBtn->setText(t(QStringLiteral("back")));
         backBtn->setCursor(Qt::PointingHandCursor);
         backBtn->setStyleSheet(ovBtnStyle);
         connect(backBtn, &QToolButton::clicked, this, &MainWindow::onTogglePip);

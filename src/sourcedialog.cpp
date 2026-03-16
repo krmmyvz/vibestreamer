@@ -28,15 +28,15 @@ SourceDialog::SourceDialog(const Source &source, const QString &language, QWidge
     buildUi(&source);
 }
 
-QString SourceDialog::t(const QString &tr, const QString &en) const
+QString SourceDialog::t(const QString &key) const
 {
-    return Localization::text(m_language, tr, en);
+    return I18n::instance().get(key);
 }
 
 void SourceDialog::buildUi(const Source *existing)
 {
-    setWindowTitle(existing ? t(QStringLiteral("Kaynağı Düzenle"), QStringLiteral("Edit Source"))
-                            : t(QStringLiteral("Kaynak Ekle"), QStringLiteral("Add Source")));
+    setWindowTitle(existing ? t(QStringLiteral("src_edit_title"))
+                            : t(QStringLiteral("src_add_title")));
     setMinimumWidth(420);
 
     auto *lay = new QVBoxLayout(this);
@@ -44,11 +44,11 @@ void SourceDialog::buildUi(const Source *existing)
     // Name
     auto *nameForm = new QFormLayout;
     m_nameEdit = new QLineEdit;
-    nameForm->addRow(t(QStringLiteral("İsim:"), QStringLiteral("Name:")), m_nameEdit);
+    nameForm->addRow(t(QStringLiteral("src_name")), m_nameEdit);
     lay->addLayout(nameForm);
 
     // Type selection
-    auto *typeBox = new QGroupBox(t(QStringLiteral("Kaynak Tipi"), QStringLiteral("Source Type")));
+    auto *typeBox = new QGroupBox(t(QStringLiteral("src_type")));
     auto *typeRow = new QHBoxLayout(typeBox);
     m_xtreamRadio = new QRadioButton(QStringLiteral("Xtream Codes"));
     m_m3uRadio    = new QRadioButton(QStringLiteral("M3U / M3U8 URL"));
@@ -66,10 +66,10 @@ void SourceDialog::buildUi(const Source *existing)
     m_serverEdit = new QLineEdit; m_serverEdit->setPlaceholderText(QStringLiteral("http://server.com:8080"));
     m_userEdit   = new QLineEdit;
     m_passEdit   = new QLineEdit; m_passEdit->setEchoMode(QLineEdit::Password);
-    xf->addRow(t(QStringLiteral("Sunucu URL:"), QStringLiteral("Server URL:")), m_serverEdit);
-    xf->addRow(t(QStringLiteral("Kullanıcı:"),  QStringLiteral("Username:")),  m_userEdit);
-    xf->addRow(t(QStringLiteral("Şifre:"),      QStringLiteral("Password:")),      m_passEdit);
-    auto *testBtn = new QPushButton(t(QStringLiteral("Bağlantıyı Test Et"), QStringLiteral("Test Connection")));
+    xf->addRow(t(QStringLiteral("src_server_url")), m_serverEdit);
+    xf->addRow(t(QStringLiteral("src_username")),  m_userEdit);
+    xf->addRow(t(QStringLiteral("src_password")),      m_passEdit);
+    auto *testBtn = new QPushButton(t(QStringLiteral("src_test_connection")));
     xf->addRow(QString{}, testBtn);
     m_stack->addWidget(xtreamPage);
 
@@ -78,28 +78,28 @@ void SourceDialog::buildUi(const Source *existing)
     auto *mf      = new QFormLayout(m3uPage);
     auto *m3uRow  = new QHBoxLayout;
     m_m3uEdit = new QLineEdit;
-    m_m3uEdit->setPlaceholderText(t(QStringLiteral("http://…/playlist.m3u  veya  dosya seçin →"), QStringLiteral("http://…/playlist.m3u  or  choose file →")));
-    auto *browseBtn = new QPushButton(t(QStringLiteral("Gözat…"), QStringLiteral("Browse…")));
+    m_m3uEdit->setPlaceholderText(t(QStringLiteral("src_m3u_placeholder")));
+    auto *browseBtn = new QPushButton(t(QStringLiteral("src_browse")));
     browseBtn->setFixedWidth(72);
     m3uRow->addWidget(m_m3uEdit);
     m3uRow->addWidget(browseBtn);
-    mf->addRow(t(QStringLiteral("M3U URL / Dosya:"), QStringLiteral("M3U URL / File:")), m3uRow);
+    mf->addRow(t(QStringLiteral("src_m3u_label")), m3uRow);
     m_stack->addWidget(m3uPage);
 
     lay->addWidget(m_stack);
 
     // Common: EPG & Auto-update
     auto *commonForm = new QFormLayout;
-    m_epgEdit = new QLineEdit; m_epgEdit->setPlaceholderText(t(QStringLiteral("(isteğe bağlı)"), QStringLiteral("(optional)")));
+    m_epgEdit = new QLineEdit; m_epgEdit->setPlaceholderText(t(QStringLiteral("src_epg_placeholder")));
     commonForm->addRow(QStringLiteral("EPG URL:"), m_epgEdit);
 
     m_autoUpdateCombo = new QComboBox;
-    m_autoUpdateCombo->addItem(t(QStringLiteral("Kapalı (Manuel)"), QStringLiteral("Off (Manual)")), 0);
-    m_autoUpdateCombo->addItem(t(QStringLiteral("Her saat başı"), QStringLiteral("Every hour")), 1);
-    m_autoUpdateCombo->addItem(t(QStringLiteral("4 saatte bir"), QStringLiteral("Every 4 hours")), 4);
-    m_autoUpdateCombo->addItem(t(QStringLiteral("12 saatte bir"), QStringLiteral("Every 12 hours")), 12);
-    m_autoUpdateCombo->addItem(t(QStringLiteral("24 saatte bir (Günlük)"), QStringLiteral("Every 24 hours (Daily)")), 24);
-    commonForm->addRow(t(QStringLiteral("Oto-Güncelleme:"), QStringLiteral("Auto-Update:")), m_autoUpdateCombo);
+    m_autoUpdateCombo->addItem(t(QStringLiteral("src_update_off")), 0);
+    m_autoUpdateCombo->addItem(t(QStringLiteral("src_update_1h")), 1);
+    m_autoUpdateCombo->addItem(t(QStringLiteral("src_update_4h")), 4);
+    m_autoUpdateCombo->addItem(t(QStringLiteral("src_update_12h")), 12);
+    m_autoUpdateCombo->addItem(t(QStringLiteral("src_update_24h")), 24);
+    commonForm->addRow(t(QStringLiteral("src_auto_update")), m_autoUpdateCombo);
 
     lay->addLayout(commonForm);
 
@@ -141,10 +141,9 @@ void SourceDialog::onBrowseFile()
 {
     const QString path = QFileDialog::getOpenFileName(
         this,
-                t(QStringLiteral("M3U Dosyası Aç"), QStringLiteral("Open M3U File")),
+                t(QStringLiteral("src_open_m3u")),
         QString{},
-                t(QStringLiteral("Playlist Dosyaları (*.m3u *.m3u8);;Tüm Dosyalar (*)"),
-                    QStringLiteral("Playlist Files (*.m3u *.m3u8);;All Files (*)"))
+                t(QStringLiteral("src_m3u_filter"))
     );
     if (!path.isEmpty())
         m_m3uEdit->setText(QUrl::fromLocalFile(path).toString());
@@ -155,20 +154,19 @@ void SourceDialog::onTestConnection()
     Source src = source();
     if (src.sourceType != SourceType::Xtream) return;
     if (src.serverUrl.isEmpty() || src.username.isEmpty()) {
-        QMessageBox::warning(this, t(QStringLiteral("Eksik Bilgi"), QStringLiteral("Missing Information")),
-                             t(QStringLiteral("Sunucu URL, kullanıcı adı ve şifre gerekli."),
-                               QStringLiteral("Server URL, username and password are required.")));
+        QMessageBox::warning(this, t(QStringLiteral("src_missing_info")),
+                             t(QStringLiteral("src_fields_required")));
         return;
     }
     auto *client = new XtreamClient(src, this);
     client->testConnection([this, client](bool ok, QString err) {
         client->deleteLater();
         if (ok)
-            QMessageBox::information(this, t(QStringLiteral("Başarılı"), QStringLiteral("Success")),
-                                     t(QStringLiteral("Bağlantı başarılı!"), QStringLiteral("Connection successful!")));
+            QMessageBox::information(this, t(QStringLiteral("src_success")),
+                                     t(QStringLiteral("src_connected")));
         else
-            QMessageBox::critical(this, t(QStringLiteral("Hata"), QStringLiteral("Error")),
-                                  t(QStringLiteral("Bağlantı hatası: "), QStringLiteral("Connection error: ")) + err);
+            QMessageBox::critical(this, t(QStringLiteral("src_error")),
+                                  t(QStringLiteral("src_connection_error")) + err);
     });
 }
 

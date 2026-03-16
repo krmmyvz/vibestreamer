@@ -109,7 +109,7 @@ private:
     void updateFavoriteButton(const Channel &ch);
     QString formatTime(double secs) const;
     void updateStyle();
-    QString t(const QString &tr, const QString &en) const;
+    QString t(const QString &key) const;
 
     // ── Cache key helpers ──────────────────────────────────────────────
     struct CacheKey {

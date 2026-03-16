@@ -11,9 +11,9 @@ class SourceDialog : public QDialog {
     Q_OBJECT
 public:
     // New source
-    explicit SourceDialog(const QString &language = QStringLiteral("tr"), QWidget *parent = nullptr);
+    explicit SourceDialog(const QString &language = QStringLiteral("en"), QWidget *parent = nullptr);
     // Edit existing
-    explicit SourceDialog(const Source &source, const QString &language = QStringLiteral("tr"), QWidget *parent = nullptr);
+    explicit SourceDialog(const Source &source, const QString &language = QStringLiteral("en"), QWidget *parent = nullptr);
 
     Source source() const;
 
@@ -24,7 +24,7 @@ private slots:
 
 private:
     void buildUi(const Source *existing);
-    QString t(const QString &tr, const QString &en) const;
+    QString t(const QString &key) const;
 
     QLineEdit     *m_nameEdit;
     QRadioButton  *m_xtreamRadio;

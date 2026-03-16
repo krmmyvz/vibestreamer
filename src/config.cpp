@@ -87,7 +87,7 @@ void Config::load()
     windowHeight    = root[u"window_height"].toInt(720);
     showEpg         = root[u"show_epg"].toBool(true);
     minimizeToTray  = root[u"minimize_to_tray"].toBool(false);
-    language        = root[u"language"].toString(QStringLiteral("tr"));
+    language        = root[u"language"].toString(QStringLiteral("en"));
     recordPath      = root[u"record_path"].toString();
     themeMode       = root[u"theme_mode"].toInt(0);
     accentColor     = root[u"accent_color"].toString(QStringLiteral("#BB86FC"));
