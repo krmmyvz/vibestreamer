@@ -32,33 +32,50 @@ QPixmap ImageCache::get(const QString &url, bool *ok)
         return QPixmap();
     }
 
+    // Fast path: memory cache only (no disk I/O)
     if (m_cache.contains(url)) {
         if (ok) *ok = true;
         return m_cache.value(url);
     }
 
-    // Attempt to load from disk cache
-    QString diskPath = getDiskCachePath(url);
-    if (QFile::exists(diskPath)) {
-        QPixmap pixmap;
-        if (pixmap.load(diskPath)) {
-            m_cache.insert(url, pixmap);
-            if (ok) *ok = true;
-            return pixmap;
-        }
-    }
-
     if (ok) *ok = false;
 
     // Already downloading or queued
-    if (m_pending.contains(url) || m_queuedSet.contains(url))
+    if (m_pending.contains(url) || m_queuedSet.contains(url) || m_diskPending.contains(url))
         return QPixmap();
 
-    // Enqueue and kick off processing
-    m_queue.enqueue(url);
-    m_queuedSet.insert(url);
-    if (!m_throttleTimer.isActive())
-        m_throttleTimer.start();
+    // Check disk cache asynchronously to avoid blocking the main thread
+    QString diskPath = getDiskCachePath(url);
+    m_diskPending.insert(url);
+
+    auto *watcher = new QFutureWatcher<QImage>(this);
+    connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, url, watcher]() {
+        m_diskPending.remove(url);
+        QImage img = watcher->result();
+        watcher->deleteLater();
+
+        if (!img.isNull()) {
+            QPixmap pixmap = QPixmap::fromImage(img);
+            m_cache.insert(url, pixmap);
+            emit imageLoaded(url, pixmap);
+            return;
+        }
+
+        // Not on disk — queue for network download
+        if (!m_cache.contains(url) && !m_pending.contains(url) && !m_queuedSet.contains(url)) {
+            m_queue.enqueue(url);
+            m_queuedSet.insert(url);
+            if (!m_throttleTimer.isActive())
+                m_throttleTimer.start();
+        }
+    });
+
+    watcher->setFuture(QtConcurrent::run([diskPath]() {
+        QImage img;
+        if (QFile::exists(diskPath))
+            img.load(diskPath);
+        return img;
+    }));
 
     return QPixmap();
 }

@@ -25,11 +25,15 @@ MpvWidget::MpvWidget(QWidget *parent)
         throw std::runtime_error("Failed to create mpv context");
 
     // Basic options
-    mpv_set_option_string(m_mpv, "terminal",    "no");   // disable terminal spam → reduces I/O CPU
+    mpv_set_option_string(m_mpv, "terminal",    "no");
     mpv_set_option_string(m_mpv, "vo",           "libmpv");
-    mpv_set_option_string(m_mpv, "hwdec",        "auto"); // enable hardware decoding
+    mpv_set_option_string(m_mpv, "hwdec",        "auto-safe");
     mpv_set_option_string(m_mpv, "cache",        "yes");
     mpv_set_option_string(m_mpv, "cache-secs",   "30");
+
+    // Reduce idle CPU: only render when mpv signals a new frame
+    mpv_set_option_string(m_mpv, "video-timing-offset", "0");
+    mpv_set_option_string(m_mpv, "idle",         "yes");
 
     if (mpv_initialize(m_mpv) < 0)
         throw std::runtime_error("Failed to initialize mpv");

@@ -33,6 +33,7 @@ private:
     QNetworkAccessManager m_net;
     QHash<QString, QPixmap> m_cache;
     QHash<QString, QNetworkReply*> m_pending;
+    QSet<QString> m_diskPending;      // URLs with in-flight disk cache lookups
     QQueue<QString> m_queue;          // URLs waiting to be fetched
     QSet<QString> m_queuedSet;        // For O(1) check if already in queue
     QTimer m_throttleTimer;

@@ -38,8 +38,7 @@ public:
     int           themeMode     = 0; // 0: Dark, 1: Light
     QString       accentColor   = QStringLiteral("#BB86FC");
 
-    // Default to software decoding ("no") to prevent crashes on systems with partial/broken drivers (e.g. missing CUDA/VDPAU)
-    QString       mpvHwDecode   = QStringLiteral("no");
+    QString       mpvHwDecode   = QStringLiteral("auto-safe");
     QString       mpvExtraArgs;
 
 private:
