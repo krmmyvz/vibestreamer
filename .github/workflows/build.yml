@@ -274,6 +274,27 @@ jobs:
           Write-Host "Using windeployqt: $windeployqt"
           & $windeployqt dist\Vibestreamer.exe --release --no-translations --compiler-runtime 2>&1
 
+          # zlib1.dll is not copied by windeployqt — find and bundle it manually
+          if (-not (Test-Path "dist\zlib1.dll")) {
+            $zlibSearchRoots = @(
+              (Split-Path $windeployqt),                         # Qt/bin
+              "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin",
+              "$env:RUNNER_WORKSPACE\Qt"
+            )
+            $zlibFound = $null
+            foreach ($root in $zlibSearchRoots) {
+              if (-not $root -or -not (Test-Path $root)) { continue }
+              $hit = Get-ChildItem -Path $root -Filter "zlib1.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($hit) { $zlibFound = $hit.FullName; break }
+            }
+            if ($zlibFound) {
+              Write-Host "Copying zlib1.dll from: $zlibFound"
+              Copy-Item $zlibFound dist\
+            } else {
+              Write-Warning "zlib1.dll not found — app may fail to start on systems without it"
+            }
+          }
+
           Compress-Archive -Path dist\* -DestinationPath Vibestreamer-Windows-x64.zip
 
       - name: Upload Windows artifact
