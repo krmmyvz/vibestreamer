@@ -7,7 +7,8 @@
 #include <QHash>
 #include <QLabel>
 #include <QLineEdit>
-#include <QListWidget>
+#include <QListView>
+#include <QStandardItemModel>
 #include <QMainWindow>
 #include <QSlider>
 #include <QSplitter>
@@ -48,9 +49,9 @@ private slots:
 
     // Navigation
     void onStreamTypeChanged(int tab);
-    void onCategorySelected(QListWidgetItem *item);
-    void onChannelSelected(QListWidgetItem *item);
-    void onChannelDoubleClicked(QListWidgetItem *item);
+    void onCategorySelected(const QModelIndex &idx);
+    void onChannelSelected(const QModelIndex &idx);
+    void onChannelDoubleClicked(const QModelIndex &idx);
     void onSearchTextChanged(const QString &text);
 
     // Player controls
@@ -164,13 +165,15 @@ private:
     QToolButton    *m_editSourceBtn = nullptr;
     QToolButton    *m_delSourceBtn = nullptr;
     QTabWidget     *m_typeTab;
-    QListWidget    *m_categoryList;
+    QListView *m_categoryList;
+    QStandardItemModel *m_catModel;
     QLabel         *m_channelHeaderLabel = nullptr;
     QLineEdit      *m_searchEdit;
     QCompleter     *m_searchCompleter = nullptr;
     QStringListModel *m_searchModel = nullptr;
     QComboBox      *m_viewModeCombo;
-    QListWidget    *m_channelList;
+    QListView *m_channelList;
+    QStandardItemModel *m_chanModel;
 
     // Player panel
     QWidget        *m_playerPanel;

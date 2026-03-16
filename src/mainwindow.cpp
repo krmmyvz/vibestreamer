@@ -1,4 +1,6 @@
 #include "mainwindow.h"
+#include <QStandardItemModel>
+#include <QStandardItem>
 #include "theme.h"
 
 #include "mpvwidget.h"
@@ -148,9 +150,9 @@ void MainWindow::retranslateUi()
     }
     if (m_recordStopBtn) m_recordStopBtn->setToolTip(t(QStringLiteral("Kaydı Durdur"), QStringLiteral("Stop recording")));
 
-    if (m_categoryList) {
-        for (int i = 0; i < m_categoryList->count(); ++i) {
-            auto *item = m_categoryList->item(i);
+    if (m_catModel) {
+        for (int i = 0; i < m_catModel->rowCount(); ++i) {
+            auto *item = m_catModel->item(i);
             if (!item) continue;
             const QString key = item->data(Qt::UserRole).toString();
             if (key == QStringLiteral("__FAVORITES__"))
@@ -425,7 +427,7 @@ void MainWindow::setupSidebar()
     // Inner splitter: category | channel
     auto *innerSplit = new QSplitter(Qt::Vertical);
 
-    m_categoryList = new QListWidget;
+    m_categoryList = new QListView; m_catModel = new QStandardItemModel(this); m_categoryList->setModel(m_catModel); m_categoryList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_categoryList->setAlternatingRowColors(false);
     m_categoryList->setSpacing(1);
     innerSplit->addWidget(m_categoryList);
@@ -480,7 +482,7 @@ void MainWindow::setupSidebar()
 
     chLay->addLayout(filterLay);
 
-    m_channelList = new QListWidget;
+    m_channelList = new QListView; m_chanModel = new QStandardItemModel(this); m_channelList->setModel(m_chanModel); m_channelList->setEditTriggers(QAbstractItemView::NoEditTriggers);
     m_channelList->setAlternatingRowColors(false);
     m_channelList->setSpacing(1);
     m_channelList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -493,9 +495,9 @@ void MainWindow::setupSidebar()
     // Connections
     connect(m_sourceCombo, &QComboBox::currentIndexChanged, this, &MainWindow::onSourceChanged);
     connect(m_typeTab,     &QTabWidget::currentChanged,     this, &MainWindow::onStreamTypeChanged);
-    connect(m_categoryList, &QListWidget::itemClicked,  this, &MainWindow::onCategorySelected);
-    connect(m_channelList,  &QListWidget::itemClicked,  this, &MainWindow::onChannelSelected);
-    connect(m_channelList,  &QListWidget::itemDoubleClicked, this, &MainWindow::onChannelDoubleClicked);
+    connect(m_categoryList, &QListView::clicked,  this, &MainWindow::onCategorySelected);
+    connect(m_channelList,  &QListView::clicked,  this, &MainWindow::onChannelSelected);
+    connect(m_channelList,  &QListView::doubleClicked, this, &MainWindow::onChannelDoubleClicked);
     connect(m_searchEdit,   &QLineEdit::textChanged,    this, &MainWindow::onSearchTextChanged);
     connect(m_viewModeCombo, &QComboBox::currentIndexChanged, this, &MainWindow::onViewModeChanged);
     connect(m_addSourceBtn,  &QToolButton::clicked, this, &MainWindow::onAddSource);
@@ -503,9 +505,9 @@ void MainWindow::setupSidebar()
     connect(m_delSourceBtn,  &QToolButton::clicked, this, &MainWindow::onRemoveSource);
 
     // Context menu for multi-view routing
-    connect(m_channelList, &QListWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
-        QListWidgetItem *item = m_channelList->itemAt(pos);
-        if (!item) return;
+    connect(m_channelList, &QListView::customContextMenuRequested, this, [this](const QPoint &pos) {
+        QModelIndex item = m_channelList->indexAt(pos);
+        if (!item.isValid()) return;
 
         QMenu menu(this);
         auto *mvMenu = menu.addMenu(Icons::gridView(m_theme.iconDefault), t(QStringLiteral("Çoklu Ekrana Gönder..."), QStringLiteral("Send to Multi View...")));
@@ -513,7 +515,7 @@ void MainWindow::setupSidebar()
         for (int i = 0; i < 4; ++i) {
             auto *action = mvMenu->addAction(t(QStringLiteral("Ekran %1"), QStringLiteral("Screen %1")).arg(i + 1));
             connect(action, &QAction::triggered, this, [this, item, i]() {
-                const QString url = item->data(Qt::UserRole).toString();
+                const QString url = item.data(Qt::UserRole).toString();
                 Channel ch;
                 for (const Channel &c : m_filteredChannels) {
                     if (c.streamUrl == url) { ch = c; break; }
@@ -539,8 +541,8 @@ void MainWindow::setupSidebar()
         if (it == m_logoUrlToRows.end()) return;
         const QIcon icon(pix);
         for (int row : it.value()) {
-            if (row < m_channelList->count()) {
-                auto *item = m_channelList->item(row);
+            if (row < m_chanModel->rowCount()) {
+                auto *item = m_chanModel->item(row);
                 if (item) item->setIcon(icon);
             }
         }
@@ -929,8 +931,8 @@ void MainWindow::invalidateCache()
 
 void MainWindow::onSourceChanged(int index)
 {
-    m_categoryList->clear();
-    m_channelList->clear();
+    if(m_catModel) m_catModel->clear();
+    if(m_chanModel) m_chanModel->clear();
     m_allChannels.clear();
     m_loadingChannels = false;
     invalidateCache();
@@ -1029,8 +1031,8 @@ void MainWindow::onStreamTypeChanged(int tab)
 
 void MainWindow::loadCategories(const QString &sourceId, StreamType type)
 {
-    m_categoryList->clear();
-    m_channelList->clear();
+    if(m_catModel) m_catModel->clear();
+    if(m_chanModel) m_chanModel->clear();
     m_allChannels.clear();
 
     const Source *src = m_config.getSource(sourceId);
@@ -1039,22 +1041,25 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
     // Helper to populate category list from a QList<Category>
     auto populateCats = [this](const QList<Category> &cats) {
         m_categories = cats;
-        m_categoryList->clear();
-        
-        // Add "Favoriler" first
-        auto *favItem = new QListWidgetItem(t(QStringLiteral("★ Favoriler"), QStringLiteral("★ Favorites")), m_categoryList);
-        favItem->setData(Qt::UserRole, QStringLiteral("__FAVORITES__"));
+        m_catModel->clear();
+        QList<QStandardItem*> items;
+        auto *favItem = new QStandardItem(t(QStringLiteral("★ Favoriler"), QStringLiteral("★ Favorites")));
+        favItem->setData(QStringLiteral("__FAVORITES__"), Qt::UserRole);
         favItem->setForeground(QBrush(QColor(m_theme.warning)));
+        items.append(favItem);
 
-        auto *allItem = new QListWidgetItem(t(QStringLiteral("Tümü"), QStringLiteral("All")), m_categoryList);
-        allItem->setData(Qt::UserRole, QString{});
-        
+        auto *allItem = new QStandardItem(t(QStringLiteral("Tümü"), QStringLiteral("All")));
+        allItem->setData(QString{}, Qt::UserRole);
+        items.append(allItem);
+
         for (const Category &c : cats) {
-            auto *item = new QListWidgetItem(c.name, m_categoryList);
-            item->setData(Qt::UserRole, c.id);
+            auto *item = new QStandardItem(c.name);
+            item->setData(c.id, Qt::UserRole);
+            items.append(item);
         }
-        if (m_categoryList->count() > 1) { // Default to "All" (index 1) to avoid empty favorites initially
-            m_categoryList->setCurrentRow(1);
+        m_catModel->appendColumn(items);
+        if (m_catModel->rowCount() > 1) {
+            m_categoryList->setCurrentIndex(m_catModel->index(1, 0));
             loadChannels({});
         }
     };
@@ -1115,15 +1120,15 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
     }
 }
 
-void MainWindow::onCategorySelected(QListWidgetItem *item)
+void MainWindow::onCategorySelected(const QModelIndex &item)
 {
-    if (!item) return;
-    loadChannels(item->data(Qt::UserRole).toString());
+    if (!item.isValid()) return;
+    loadChannels(item.data(Qt::UserRole).toString());
 }
 
 void MainWindow::loadChannels(const QString &categoryId)
 {
-    m_channelList->clear();
+    if(m_chanModel) m_chanModel->clear();
     m_allChannels.clear();
 
     const int srcIdx = m_sourceCombo->currentIndex();
@@ -1155,7 +1160,7 @@ void MainWindow::loadChannels(const QString &categoryId)
             QTimer::singleShot(1000, this, [this, resumeUrl]() {
                 for (int i = 0; i < m_filteredChannels.size(); ++i) {
                     if (m_filteredChannels[i].streamUrl == resumeUrl) {
-                        m_channelList->setCurrentRow(i);
+                        m_channelList->setCurrentIndex(m_chanModel->index(i, 0));
                         m_currentChannel = m_filteredChannels[i];
                         updateFavoriteButton(m_currentChannel);
                         if (m_currentChannel.streamType == StreamType::Live)
@@ -1400,7 +1405,7 @@ void MainWindow::onViewModeChanged(int index)
 void MainWindow::populateChannelList(const QList<Channel> &channels)
 {
     m_channelList->setUpdatesEnabled(false);
-    m_channelList->clear();
+    if(m_chanModel) m_chanModel->clear();
     m_logoUrlToRows.clear();
 
     int idx = 0;
@@ -1409,8 +1414,9 @@ void MainWindow::populateChannelList(const QList<Channel> &channels)
         const QString numStr = ch.num > 0
             ? QString::number(ch.num) + QStringLiteral(". ")
             : QString::number(idx + 1) + QStringLiteral(". ");
-        auto *item = new QListWidgetItem(prefix + numStr + ch.name, m_channelList);
-        item->setData(Qt::UserRole, ch.streamUrl);
+        auto *item = new QStandardItem(prefix + numStr + ch.name);
+m_chanModel->appendRow(item);
+        item->setData(ch.streamUrl, Qt::UserRole);
         item->setToolTip(ch.plot.isEmpty() ? ch.name : ch.plot.left(200));
 
         if (!ch.logoUrl.isEmpty()) {
@@ -1426,10 +1432,10 @@ void MainWindow::populateChannelList(const QList<Channel> &channels)
     m_channelList->setUpdatesEnabled(true);
 }
 
-void MainWindow::onChannelSelected(QListWidgetItem *item)
+void MainWindow::onChannelSelected(const QModelIndex &item)
 {
-    if (!item) return;
-    const QString url = item->data(Qt::UserRole).toString();
+    if (!item.isValid()) return;
+    const QString url = item.data(Qt::UserRole).toString();
     for (const Channel &ch : m_filteredChannels)
         if (ch.streamUrl == url) { m_currentChannel = ch; break; }
     updateFavoriteButton(m_currentChannel);
@@ -1439,7 +1445,7 @@ void MainWindow::onChannelSelected(QListWidgetItem *item)
         updateInfoPanel(m_currentChannel);
 }
 
-void MainWindow::onChannelDoubleClicked(QListWidgetItem *item)
+void MainWindow::onChannelDoubleClicked(const QModelIndex &item)
 {
     onChannelSelected(item);
     playChannel(m_currentChannel);
@@ -1635,8 +1641,8 @@ void MainWindow::onToggleFavorite()
     if (m_currentChannel.streamUrl.isEmpty()) return;
     const bool isFav = m_config.toggleFavorite(m_currentChannel.streamUrl);
     m_currentChannel.isFavorite = isFav;
-    for (int i = 0; i < m_channelList->count(); ++i) {
-        auto *item = m_channelList->item(i);
+    for (int i = 0; i < m_chanModel->rowCount(); ++i) {
+        auto *item = m_chanModel->item(i);
         if (item->data(Qt::UserRole).toString() == m_currentChannel.streamUrl) {
             item->setText((isFav ? QStringLiteral("★ ") : QString{}) + m_currentChannel.name);
             break;
@@ -1695,19 +1701,20 @@ void MainWindow::onSkipForward()
 
 void MainWindow::onPrevChannel()
 {
-    const int row = m_channelList->currentRow();
+    const int row = m_channelList->currentIndex().row();
     if (row > 0) {
-        m_channelList->setCurrentRow(row - 1);
-        onChannelDoubleClicked(m_channelList->currentItem());
+        auto idx = m_chanModel->index(row - 1, 0);
+        m_channelList->setCurrentIndex(idx);
+        onChannelDoubleClicked(idx);
     }
 }
 
 void MainWindow::onNextChannel()
 {
-    const int row = m_channelList->currentRow();
-    if (row < m_channelList->count() - 1) {
-        m_channelList->setCurrentRow(row + 1);
-        onChannelDoubleClicked(m_channelList->currentItem());
+    const int row = m_channelList->currentIndex().row();
+    if (row < m_chanModel->rowCount() - 1) {
+        m_channelList->setCurrentIndex(m_chanModel->index(row + 1, 0));
+        onChannelDoubleClicked(m_channelList->currentIndex());
     }
 }
 
