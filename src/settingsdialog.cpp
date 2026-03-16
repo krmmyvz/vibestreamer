@@ -58,7 +58,11 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     m_minimizeTrayCheck = new QCheckBox(Localization::text(lang, QStringLiteral("Kapatınca sistem tepsisine küçült"), QStringLiteral("Minimize to tray on close")));
     m_minimizeTrayCheck->setChecked(config.minimizeToTray);
     pf->addRow(m_minimizeTrayCheck);
-    
+
+    m_statePersistenceCheck = new QCheckBox(Localization::text(lang, QStringLiteral("Kaldığın Yerden Devam Et (son kanal, kategori, ses seviyesi)"), QStringLiteral("Resume Where You Left Off (last channel, category, volume)")));
+    m_statePersistenceCheck->setChecked(config.statePersistence);
+    pf->addRow(m_statePersistenceCheck);
+
     auto *recordPathRow = new QHBoxLayout;
     m_recordPathEdit = new QLineEdit(config.recordPath);
     m_recordPathEdit->setPlaceholderText(Localization::text(lang, QStringLiteral("Varsayılan: Videolar klasörü"), QStringLiteral("Default: Movies folder")));

@@ -79,6 +79,8 @@ void Config::load()
 
     lastSourceId    = root[u"last_source_id"].toString();
     lastChannelUrl  = root[u"last_channel_url"].toString();
+    lastCategoryId  = root[u"last_category_id"].toString();
+    lastStreamType  = root[u"last_stream_type"].toInt(0);
     volume          = root[u"volume"].toInt(100);
     statePersistence= root[u"state_persistence"].toBool(true);
     windowWidth     = root[u"window_width"].toInt(1280);
@@ -133,6 +135,8 @@ void Config::save()
     root[u"shortcuts"]        = shObj;
     root[u"last_source_id"]   = lastSourceId;
     root[u"last_channel_url"] = lastChannelUrl;
+    root[u"last_category_id"] = lastCategoryId;
+    root[u"last_stream_type"] = lastStreamType;
     root[u"volume"]           = volume;
     root[u"state_persistence"] = statePersistence;
     root[u"window_width"]     = windowWidth;

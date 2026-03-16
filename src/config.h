@@ -23,6 +23,8 @@ public:
     QStringList   favorites;
     QString       lastSourceId;
     QString       lastChannelUrl;
+    QString       lastCategoryId;
+    int           lastStreamType = 0;  // 0=Live 1=VOD 2=Series
     QStringList   searchHistory;
     QMap<QString, QString> shortcuts;
     int           volume        = 100;

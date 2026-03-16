@@ -910,6 +910,14 @@ void MainWindow::loadSourceList()
         m_sourceCombo->addItem(s.name, s.id);
     m_sourceCombo->blockSignals(false);
 
+    // Restore last stream type tab before loading source (so categories load for the right type)
+    if (m_config.statePersistence && m_config.lastStreamType >= 0 && m_config.lastStreamType < m_typeTab->count()) {
+        m_typeTab->blockSignals(true);
+        m_typeTab->setCurrentIndex(m_config.lastStreamType);
+        m_streamType = static_cast<StreamType>(m_config.lastStreamType);
+        m_typeTab->blockSignals(false);
+    }
+
     // Restore last selected source
     int idx = m_config.statePersistence ? m_sourceCombo->findData(m_config.lastSourceId) : -1;
     if (idx < 0 && m_sourceCombo->count() > 0) idx = 0;
@@ -1027,6 +1035,7 @@ void MainWindow::onOpenSettings()
 void MainWindow::onStreamTypeChanged(int tab)
 {
     m_streamType = static_cast<StreamType>(tab);  // 0=Live 1=VOD 2=Series
+    m_config.lastStreamType = tab;
     const int srcIdx = m_sourceCombo->currentIndex();
     if (srcIdx < 0 || srcIdx >= m_config.sources.size()) return;
     loadCategories(m_config.sources[srcIdx].id, m_streamType);
@@ -1062,8 +1071,17 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
         }
         m_catModel->appendColumn(items);
         if (m_catModel->rowCount() > 1) {
-            m_categoryList->setCurrentIndex(m_catModel->index(1, 0));
-            loadChannels({});
+            int restoreIdx = 1; // default to "All"
+            if (m_config.statePersistence && !m_config.lastCategoryId.isEmpty()) {
+                for (int r = 0; r < m_catModel->rowCount(); ++r) {
+                    if (m_catModel->item(r)->data(Qt::UserRole).toString() == m_config.lastCategoryId) {
+                        restoreIdx = r;
+                        break;
+                    }
+                }
+            }
+            m_categoryList->setCurrentIndex(m_catModel->index(restoreIdx, 0));
+            loadChannels(m_catModel->item(restoreIdx)->data(Qt::UserRole).toString());
         }
     };
 
@@ -1126,7 +1144,9 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
 void MainWindow::onCategorySelected(const QModelIndex &item)
 {
     if (!item.isValid()) return;
-    loadChannels(item.data(Qt::UserRole).toString());
+    const QString catId = item.data(Qt::UserRole).toString();
+    m_config.lastCategoryId = catId;
+    loadChannels(catId);
 }
 
 void MainWindow::loadChannels(const QString &categoryId)

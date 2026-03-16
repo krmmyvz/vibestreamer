@@ -4,7 +4,6 @@
 #include <QComboBox>
 #include <QDialog>
 #include <QLineEdit>
-#include <QSlider>
 #include <QCheckBox>
 #include <QKeySequenceEdit>
 #include <QMap>
@@ -23,8 +22,8 @@ private:
     QComboBox  *m_hwDecodeCombo;
     QLineEdit  *m_extraArgsEdit;
     QLineEdit  *m_recordPathEdit;
-    QSlider    *m_volumeSlider;
     QCheckBox  *m_minimizeTrayCheck;
+    QCheckBox  *m_statePersistenceCheck;
 
     // Theme
     QComboBox  *m_themeModeCombo;
