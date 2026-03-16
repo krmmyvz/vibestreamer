@@ -32,6 +32,11 @@ SettingsDialog::SettingsDialog(const Config &config, QWidget *parent)
     m_languageCombo = new QComboBox;
     m_languageCombo->addItem(QStringLiteral("Türkçe"), QStringLiteral("tr"));
     m_languageCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+    m_languageCombo->addItem(QStringLiteral("Deutsch"), QStringLiteral("de"));
+    m_languageCombo->addItem(QStringLiteral("Italiano"), QStringLiteral("it"));
+    m_languageCombo->addItem(QStringLiteral("Français"), QStringLiteral("fr"));
+    m_languageCombo->addItem(QStringLiteral("Português"), QStringLiteral("pt"));
+    m_languageCombo->addItem(QStringLiteral("العربية"), QStringLiteral("ar"));
     const int langIdx = m_languageCombo->findData(config.language);
     m_languageCombo->setCurrentIndex(langIdx >= 0 ? langIdx : 0);
     pf->addRow(i.get(QStringLiteral("pref_language")), m_languageCombo);
