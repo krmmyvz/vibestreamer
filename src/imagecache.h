@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QDir>
 
 class ImageCache : public QObject {
     Q_OBJECT
@@ -27,6 +28,7 @@ private:
     ~ImageCache() override = default;
 
     void processQueue();
+    QString getDiskCachePath(const QString &url) const;
 
     QNetworkAccessManager m_net;
     QHash<QString, QPixmap> m_cache;
@@ -34,5 +36,6 @@ private:
     QQueue<QString> m_queue;          // URLs waiting to be fetched
     QSet<QString> m_queuedSet;        // For O(1) check if already in queue
     QTimer m_throttleTimer;
+    QDir m_cacheDir;
     static constexpr int MaxConcurrent = 6;   // max simultaneous downloads
 };

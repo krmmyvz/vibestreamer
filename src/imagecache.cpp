@@ -2,12 +2,27 @@
 #include <QNetworkRequest>
 #include <QtConcurrent>
 #include <QFutureWatcher>
+#include <QStandardPaths>
+#include <QCryptographicHash>
+#include <QFile>
 
 ImageCache::ImageCache(QObject *parent) : QObject(parent)
 {
+    QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QDir::separator() + "logos";
+    m_cacheDir.setPath(cachePath);
+    if (!m_cacheDir.exists()) {
+        m_cacheDir.mkpath(".");
+    }
+
     m_throttleTimer.setSingleShot(true);
     m_throttleTimer.setInterval(10);
     connect(&m_throttleTimer, &QTimer::timeout, this, &ImageCache::processQueue);
+}
+
+QString ImageCache::getDiskCachePath(const QString &url) const
+{
+    QString hash = QString(QCryptographicHash::hash(url.toUtf8(), QCryptographicHash::Md5).toHex());
+    return m_cacheDir.absoluteFilePath(hash + ".png");
 }
 
 QPixmap ImageCache::get(const QString &url, bool *ok)
@@ -20,6 +35,17 @@ QPixmap ImageCache::get(const QString &url, bool *ok)
     if (m_cache.contains(url)) {
         if (ok) *ok = true;
         return m_cache.value(url);
+    }
+
+    // Attempt to load from disk cache
+    QString diskPath = getDiskCachePath(url);
+    if (QFile::exists(diskPath)) {
+        QPixmap pixmap;
+        if (pixmap.load(diskPath)) {
+            m_cache.insert(url, pixmap);
+            if (ok) *ok = true;
+            return pixmap;
+        }
     }
 
     if (ok) *ok = false;
@@ -63,6 +89,8 @@ void ImageCache::processQueue()
                 
                 // Process image in background (QImage is thread-safe, QPixmap is not)
                 auto *watcher = new QFutureWatcher<QImage>(this);
+                QString diskPath = getDiskCachePath(url);
+                
                 connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, url, watcher]() {
                     QImage img = watcher->result();
                     watcher->deleteLater();
@@ -74,10 +102,12 @@ void ImageCache::processQueue()
                     }
                 });
                 
-                watcher->setFuture(QtConcurrent::run([rawData]() {
+                watcher->setFuture(QtConcurrent::run([rawData, diskPath]() {
                     QImage img;
                     if (img.loadFromData(rawData)) {
-                        return img.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                        QImage scaled = img.scaled(48, 48, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                        scaled.save(diskPath, "PNG");
+                        return scaled;
                     }
                     return QImage();
                 }));
