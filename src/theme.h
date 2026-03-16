@@ -251,21 +251,21 @@ public:
             QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }
 
             /* ─── Lists ─── */
-            QListWidget {
+            QListView {
                 background-color: transparent;
                 border: none;
                 outline: none;
                 padding: 4px;
             }
-            QListWidget::item {
+            QListView::item {
                 border-radius: 6px;
                 padding: 8px 12px;
                 margin-bottom: 2px;
             }
-            QListWidget::item:hover {
+            QListView::item:hover {
                 background-color: %7;
             }
-            QListWidget::item:selected {
+            QListView::item:selected {
                 background-color: %8;
                 color: %2;
                 font-weight: bold;
