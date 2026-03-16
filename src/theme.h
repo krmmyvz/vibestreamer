@@ -334,6 +334,9 @@ public:
                 padding: 6px 12px;
                 color: %2;
             }
+            QComboBox:hover {
+                border: 1px solid %3;
+            }
             QComboBox::drop-down { border: none; }
             QComboBox::down-arrow {
                 image: none;
@@ -345,6 +348,28 @@ public:
             QComboBox:on {
                 border-bottom-left-radius: 0;
                 border-bottom-right-radius: 0;
+            }
+            QComboBox QAbstractItemView {
+                background-color: %1;
+                border: 1px solid %5;
+                border-radius: 0 0 6px 6px;
+                padding: 4px;
+                color: %2;
+                outline: none;
+                selection-background-color: %8;
+                selection-color: %2;
+            }
+            QComboBox QAbstractItemView::item {
+                padding: 6px 12px;
+                border-radius: 4px;
+                margin: 1px 0;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: %7;
+            }
+            QComboBox QAbstractItemView::item:selected {
+                background-color: %8;
+                color: %2;
             }
 
             /* ─── Buttons ─── */
