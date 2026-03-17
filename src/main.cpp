@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "devstats.h"
 
 #include <QApplication>
 #include <QIcon>
@@ -16,6 +17,11 @@ int main(int argc, char *argv[])
     app.setOrganizationName(QStringLiteral("Vibestreamer"));
     app.setApplicationVersion(QStringLiteral("1.3.2"));
     app.setWindowIcon(QIcon(QStringLiteral(":/logo_concept1.svg")));
+
+    DEV_STAT("app_version", app.applicationVersion());
+#ifdef DEV_MODE
+    DevStats::instance().init();
+#endif
 
     // libmpv requires LC_NUMERIC="C" — must be set AFTER QApplication
     // because QApplication constructor resets the locale

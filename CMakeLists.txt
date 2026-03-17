@@ -55,10 +55,18 @@ else()
     endif()
 endif()
 
+# ── Developer diagnostics (off by default, zero cost in Release) ──────────────
+option(DEV_MODE "Enable developer diagnostics: structured log file + live stats JSON" OFF)
+if(DEV_MODE)
+    message(STATUS "DEV_MODE enabled — log + stats output active")
+    add_compile_definitions(DEV_MODE)
+endif()
+
 set(SOURCES
     src/main.cpp
     # core
     src/core/config.cpp
+    $<$<BOOL:${DEV_MODE}>:src/core/devstats.cpp>
     # network
     src/network/xtreamclient.cpp
     src/network/imagecache.cpp

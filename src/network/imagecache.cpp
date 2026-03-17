@@ -1,4 +1,5 @@
 #include "imagecache.h"
+#include "devstats.h"
 #include <QNetworkRequest>
 #include <QtConcurrent>
 #include <QFutureWatcher>
@@ -20,6 +21,7 @@ void ImageCache::insertToMemCache(const QString &url, const QPixmap &pixmap)
     }
     m_cache.insert(url, pixmap);
     m_lruOrder.append(url);
+    DEV_STAT("image_cache_entries", m_cache.size());
 }
 
 ImageCache::ImageCache(QObject *parent) : QObject(parent)

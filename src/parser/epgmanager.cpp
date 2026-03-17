@@ -1,4 +1,5 @@
 #include "epgmanager.h"
+#include "devstats.h"
 
 #include <QDateTime>
 #include <QTimeZone>
@@ -137,6 +138,12 @@ void EpgManager::load(const QString &urlsStr)
                                 m_data            = std::move(finalState.data);
                                 m_nameToId        = std::move(finalState.nameToId);
                                 m_channelIdByLower = std::move(finalState.channelIdByLower);
+                            }
+                            DEV_STAT("epg_channels", m_data.size());
+                            {
+                                int total = 0;
+                                for (const auto &v : m_data) total += v.size();
+                                DEV_STAT("epg_programs", total);
                             }
                             emit loaded();
                         }

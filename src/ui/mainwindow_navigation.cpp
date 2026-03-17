@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "devstats.h"
 #include "mpvwidget.h"
 #include "multiviewwidget.h"
 #include "sourcedialog.h"
@@ -308,6 +309,7 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
         }
         if (m_categoryCache.size() >= 50) m_categoryCache.clear();
         m_categoryCache.insert(key, cats);
+        DEV_STAT("category_cache_keys", m_categoryCache.size());
         populateCats(cats);
     };
 
@@ -492,6 +494,8 @@ void MainWindow::loadChannels(const QString &categoryId)
                 }
 
                 m_m3uCache.insert(src.id, all);
+                DEV_STAT("m3u_cache_sources", m_m3uCache.size());
+                DEV_STAT("m3u_total_channels", all.size());
 
                 // Check for embedded EPG URL
                 if (src.epgUrl.isEmpty() && !result.epgUrl.isEmpty()) {
@@ -552,6 +556,7 @@ void MainWindow::loadChannels(const QString &categoryId)
             }
             if (m_channelCache.size() >= 50) m_channelCache.clear();
             m_channelCache.insert(allKey, channels);
+            DEV_STAT("channel_cache_keys", m_channelCache.size());
             QList<Channel> favs;
             for (const Channel &ch : channels)
                 if (m_config.isFavorite(ch.streamUrl))
@@ -581,6 +586,7 @@ void MainWindow::loadChannels(const QString &categoryId)
         }
         if (m_channelCache.size() >= 50) m_channelCache.clear();
         m_channelCache.insert(key, channels);
+        DEV_STAT("channel_cache_keys", m_channelCache.size());
         finalize(channels);
     };
 
