@@ -9,7 +9,6 @@
 class Config {
 public:
     Config();
-    void save();
 
     void addSource(Source source);
     void removeSource(const QString &sourceId);
