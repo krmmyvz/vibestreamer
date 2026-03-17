@@ -26,7 +26,7 @@ M3UParser::Result M3UParser::parse(const QString &text, const QString &sourceId)
 {
     Result res;
     // Pre-allocate memory to avoid multiple reallocations during large playlist parsing
-    res.channels.reserve(10000); 
+    res.channels.reserve(10000);
 
     Channel pending;
     bool hasPending = false;
@@ -35,7 +35,7 @@ M3UParser::Result M3UParser::parse(const QString &text, const QString &sourceId)
     QStringView textV(text);
     int start = 0;
     const int length = textV.size();
-    
+
     while (start < length) {
         int end = textV.indexOf(QLatin1Char('\n'), start);
         if (end < 0)
@@ -76,11 +76,11 @@ M3UParser::Result M3UParser::parse(const QString &text, const QString &sourceId)
                 pending.name = tvgName.toString();
 
             // Determine stream type from group-title heuristic without allocating a new lowercase string
-            if (pending.categoryName.contains(QLatin1String("movie"), Qt::CaseInsensitive) || 
+            if (pending.categoryName.contains(QLatin1String("movie"), Qt::CaseInsensitive) ||
                 pending.categoryName.contains(QLatin1String("film"), Qt::CaseInsensitive) ||
                 pending.categoryName.contains(QLatin1String("vod"), Qt::CaseInsensitive)) {
                 pending.streamType = StreamType::VOD;
-            } else if (pending.categoryName.contains(QLatin1String("series"), Qt::CaseInsensitive) || 
+            } else if (pending.categoryName.contains(QLatin1String("series"), Qt::CaseInsensitive) ||
                        pending.categoryName.contains(QLatin1String("dizi"), Qt::CaseInsensitive)) {
                 pending.streamType = StreamType::Series;
             } else {

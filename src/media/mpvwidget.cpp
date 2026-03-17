@@ -286,7 +286,7 @@ void MpvWidget::setOption(const QString &name, const QString &value)
 
 void MpvWidget::setMpvProperty(const QString &name, const QString &value)
 {
-    // Avoid mpv_set_property_async since its string lifetimes are tricky, 
+    // Avoid mpv_set_property_async since its string lifetimes are tricky,
     // and mpv_command_async might be triggering weird internal state.
     // Given these properties are applied BEFORE play(), synchronous call is completely safe.
     mpv_set_property_string(m_mpv, name.toUtf8().constData(), value.toUtf8().constData());

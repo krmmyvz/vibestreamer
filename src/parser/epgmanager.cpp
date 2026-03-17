@@ -64,7 +64,7 @@ void EpgManager::load(const QString &urlsStr)
 
     const QStringList urls = urlsStr.split(QLatin1Char(','), Qt::SkipEmptyParts);
     if (urls.isEmpty()) return;
-    
+
     // We don't clear m_data instantly, so the UI can still show old EPG while loading
     m_pendingResults.clear();
     m_pendingJobs = urls.size();
@@ -121,14 +121,14 @@ void EpgManager::load(const QString &urlsStr)
 
                 m_pendingResults.append(watcher->result());
                 watcher->deleteLater();
-                
+
                 if (--m_pendingJobs == 0) {
                     // Start a final background job to merge and sort everything
                     auto *mergeWatcher = new QFutureWatcher<EpgState>(this);
-                    
+
                     QList<ParseResult> resultsToMerge = m_pendingResults;
                     m_pendingResults.clear();
-                    
+
                     connect(mergeWatcher, &QFutureWatcher<EpgState>::finished, this, [this, mergeWatcher, generation]() {
                         if (generation == m_loadGeneration) {
                             EpgState finalState = mergeWatcher->result();
@@ -139,7 +139,7 @@ void EpgManager::load(const QString &urlsStr)
                         }
                         mergeWatcher->deleteLater();
                     });
-                    
+
                     mergeWatcher->setFuture(QtConcurrent::run([resultsToMerge]() {
                         EpgState state;
                         // Merge all partial results
@@ -151,7 +151,7 @@ void EpgManager::load(const QString &urlsStr)
                                 state.nameToId.insert(it.key(), it.value());
                             }
                         }
-                        
+
                         // Sort programs and build lower-case index
                         for (auto it = state.data.begin(); it != state.data.end(); ++it) {
                             auto &programs = it.value();
@@ -160,12 +160,12 @@ void EpgManager::load(const QString &urlsStr)
                             });
                             state.channelIdByLower.insert(it.key().toLower(), it.key());
                         }
-                        
+
                         return state;
                     }));
                 }
             });
-            
+
             // Run decompression and parsing in the background
             watcher->setFuture(QtConcurrent::run([raw]() {
                 QByteArray xml = gzipDecompress(raw);

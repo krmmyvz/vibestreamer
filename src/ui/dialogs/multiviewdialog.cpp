@@ -25,7 +25,7 @@ void MultiViewDialog::setupUI()
         m_players[i] = new MpvWidget(this);
         // By default, mute all screens so they don't overlap noisy audio
         // Alternatively, we could unmute only the first one
-        m_players[i]->setVolume(0); 
+        m_players[i]->setVolume(0);
 
         int row = i / 2;
         int col = i % 2;

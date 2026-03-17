@@ -57,22 +57,50 @@ endif()
 
 set(SOURCES
     src/main.cpp
-    src/config.cpp
-    src/xtreamclient.cpp
-    src/m3uparser.cpp
-    src/epgmanager.cpp
-    src/mpvwidget.cpp
-    src/mainwindow.cpp
-    src/sourcedialog.cpp
-    src/settingsdialog.cpp
-    src/multiviewwidget.cpp
-    src/imagecache.cpp
+    # core
+    src/core/config.cpp
+    # network
+    src/network/xtreamclient.cpp
+    src/network/imagecache.cpp
+    # parser
+    src/parser/m3uparser.cpp
+    src/parser/epgmanager.cpp
+    # media
+    src/media/mpvwidget.cpp
+    # ui / dialogs
+    src/ui/dialogs/sourcedialog.cpp
+    src/ui/dialogs/settingsdialog.cpp
+    src/ui/dialogs/multiviewdialog.cpp
+    # ui / widgets
+    src/ui/widgets/multiviewwidget.cpp
+    # ui / mainwindow (split)
+    src/ui/mainwindow.cpp
+    src/ui/mainwindow_setup.cpp
+    src/ui/mainwindow_theme.cpp
+    src/ui/mainwindow_navigation.cpp
+    src/ui/mainwindow_controls.cpp
+    src/ui/mainwindow_epg.cpp
+    src/ui/mainwindow_recording.cpp
+    src/ui/mainwindow_multiview.cpp
+    src/ui/mainwindow_pip.cpp
     resources.qrc
 )
 
 qt_add_executable(Vibestreamer ${SOURCES})
 
-target_include_directories(Vibestreamer PRIVATE src ${MPV_INCLUDE_DIRS})
+target_include_directories(Vibestreamer PRIVATE
+    src
+    src/core
+    src/network
+    src/parser
+    src/media
+    src/i18n
+    src/ui
+    src/ui/styles
+    src/ui/dialogs
+    src/ui/widgets
+    ${MPV_INCLUDE_DIRS}
+)
 
 if(MPV_LIBRARY_DIRS)
     target_link_directories(Vibestreamer PRIVATE ${MPV_LIBRARY_DIRS})

@@ -117,22 +117,22 @@ void ImageCache::processQueue()
                         m_throttleTimer.start();
                     return;
                 }
-                
+
                 // Process image in background (QImage is thread-safe, QPixmap is not)
                 auto *watcher = new QFutureWatcher<QImage>(this);
                 QString diskPath = getDiskCachePath(url);
-                
+
                 connect(watcher, &QFutureWatcher<QImage>::finished, this, [this, url, watcher]() {
                     QImage img = watcher->result();
                     watcher->deleteLater();
-                    
+
                     if (!img.isNull()) {
                         QPixmap pixmap = QPixmap::fromImage(img);
                         m_cache.insert(url, pixmap);
                         emit imageLoaded(url, pixmap);
                     }
                 });
-                
+
                 watcher->setFuture(QtConcurrent::run([rawData, diskPath]() {
                     QImage img;
                     if (img.loadFromData(rawData)) {

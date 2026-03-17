@@ -5,7 +5,7 @@
 
   ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
   ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
-  ![Version](https://img.shields.io/badge/version-1.3.1-BB86FC)
+  ![Version](https://img.shields.io/badge/version-1.3.2-BB86FC)
   ![License](https://img.shields.io/badge/license-MIT-orange)
 </div>
 
@@ -138,21 +138,40 @@ vibestreamer/
 │   ├── en.json · tr.json · de.json
 │   ├── it.json · fr.json · pt.json · ar.json
 └── src/
-    ├── main.cpp                — Entry point, app metadata
-    ├── models.h                — Data models (Source, Category, Channel, EpgProgram)
-    ├── config.h/cpp            — JSON config persistence (~/.config/Vibestreamer/)
-    ├── theme.h                 — Design token system (dark/light palettes + QSS generation)
-    ├── icons.h                 — SVG icon factory with dynamic tinting
-    ├── localization.h          — I18n singleton, JSON-driven translations
-    ├── xtreamclient.h/cpp      — Async Xtream Codes API client (QUrlQuery-safe)
-    ├── m3uparser.h/cpp         — M3U/M3U8 playlist parser (background thread)
-    ├── epgmanager.h/cpp        — XMLTV EPG parser with background merge/sort
-    ├── imagecache.h/cpp        — Async logo cache with persistent disk storage
-    ├── mpvwidget.h/cpp         — libmpv QOpenGLWidget renderer
-    ├── multiviewwidget.h/cpp   — Inline 2×2 split-screen widget with click-to-activate
-    ├── mainwindow.h/cpp        — Main window (sidebar + player stack + EPG panel)
-    ├── sourcedialog.h/cpp      — Add / edit source dialog
-    └── settingsdialog.h/cpp    — Preferences dialog
+    ├── main.cpp                    — Entry point, app metadata
+    ├── core/
+    │   ├── models.h                — Data models (Source, Category, Channel, EpgProgram)
+    │   └── config.h/cpp            — JSON config persistence (~/.config/Vibestreamer/)
+    ├── network/
+    │   ├── xtreamclient.h/cpp      — Async Xtream Codes API client (QUrlQuery-safe)
+    │   └── imagecache.h/cpp        — Async logo cache with persistent disk storage
+    ├── parser/
+    │   ├── m3uparser.h/cpp         — M3U/M3U8 playlist parser (background thread)
+    │   └── epgmanager.h/cpp        — XMLTV EPG parser with background merge/sort
+    ├── media/
+    │   └── mpvwidget.h/cpp         — libmpv QOpenGLWidget renderer
+    ├── i18n/
+    │   └── localization.h          — I18n singleton, JSON-driven translations
+    └── ui/
+        ├── styles/
+        │   ├── theme.h             — Design token system (dark/light palettes + QSS)
+        │   └── icons.h             — SVG icon factory with dynamic tinting
+        ├── dialogs/
+        │   ├── sourcedialog.h/cpp  — Add / edit source dialog
+        │   ├── settingsdialog.h/cpp — Preferences dialog (shortcuts tab)
+        │   └── multiviewdialog.h/cpp — Standalone 2×2 multi-view dialog
+        ├── widgets/
+        │   └── multiviewwidget.h/cpp — Inline 2×2 split-screen widget
+        ├── mainwindow.h
+        ├── mainwindow.cpp              — Constructor, core helpers, event handlers
+        ├── mainwindow_setup.cpp        — UI construction (sidebar, player, control bar, tray)
+        ├── mainwindow_theme.cpp        — Theme application and inline style updates
+        ├── mainwindow_navigation.cpp   — Source/category/channel loading, search, playback routing
+        ├── mainwindow_controls.cpp     — Playback controls, volume, speed, track menus
+        ├── mainwindow_epg.cpp          — EPG panel, program info, favorites
+        ├── mainwindow_recording.cpp    — Stream recording (start/pause/stop)
+        ├── mainwindow_multiview.cpp    — Multi-view mode and fullscreen toggle
+        └── mainwindow_pip.cpp          — Picture-in-Picture mode, drag/resize event filter
 ```
 
 ---
