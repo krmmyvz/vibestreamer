@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QList>
 #include <QObject>
+#include <QReadWriteLock>
 #include <QString>
 
 class QNetworkAccessManager;
@@ -44,6 +45,7 @@ private:
     static ParseResult parseXmltv(const QByteArray &data);
 
     QNetworkAccessManager              *m_nam;
+    mutable QReadWriteLock              m_lock{QReadWriteLock::Recursive};
     QHash<QString, QList<EpgProgram>>   m_data;         // channelId → programs
     QHash<QString, QString>             m_nameToId;     // display-name (lower) → channelId
     QHash<QString, QString>             m_channelIdByLower;

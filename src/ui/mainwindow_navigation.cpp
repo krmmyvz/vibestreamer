@@ -113,6 +113,12 @@ void MainWindow::invalidateCache()
 
 void MainWindow::onSourceChanged(int index)
 {
+    // Abort any in-flight M3U download to prevent stale callbacks and wasted bandwidth
+    if (m_m3uNam) {
+        m_m3uNam->deleteLater();
+        m_m3uNam = nullptr;
+    }
+
     if(m_catModel) m_catModel->clear();
     if(m_chanModel) m_chanModel->clear();
     m_allChannels.clear();
@@ -300,6 +306,7 @@ void MainWindow::loadCategories(const QString &sourceId, StreamType type)
             statusBar()->showMessage(t(QStringLiteral("category_load_error")) + err, 6000);
             return;
         }
+        if (m_categoryCache.size() >= 50) m_categoryCache.clear();
         m_categoryCache.insert(key, cats);
         populateCats(cats);
     };
@@ -423,14 +430,22 @@ void MainWindow::loadChannels(const QString &categoryId)
             return;
         }
 
-        auto *nam  = new QNetworkAccessManager(this);
+        m_m3uNam = new QNetworkAccessManager(this);
         QNetworkRequest req{QUrl(src.m3uUrl)};
         req.setRawHeader("User-Agent", "Vibestreamer/2.0");
         req.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
         req.setTransferTimeout(60000); // Increased timeout to 60s
-        QNetworkReply *reply = nam->get(req);
-        connect(reply, &QNetworkReply::finished, this, [this, reply, nam, src, finalize]() {
+        QNetworkReply *reply = m_m3uNam->get(req);
+        connect(reply, &QNetworkReply::finished, this, [this, reply, src, finalize]() {
+            // NAM was deleted on source switch — nothing to do
+            if (!m_m3uNam) {
+                reply->deleteLater();
+                return;
+            }
+            m_m3uNam->deleteLater();
+            m_m3uNam = nullptr;
+
             if (reply->error() != QNetworkReply::NoError) {
                 const int currentSrcIdx = m_sourceCombo->currentIndex();
                 bool isSameSource = (currentSrcIdx >= 0 && m_config.sources[currentSrcIdx].id == src.id);
@@ -443,14 +458,12 @@ void MainWindow::loadChannels(const QString &categoryId)
                     m_loadingChannels = false;
                 }
                 reply->deleteLater();
-                nam->deleteLater();
                 return;
             }
 
             constexpr qint64 kMaxM3UBytes = 100LL * 1024 * 1024; // 100 MB
             const QByteArray raw = reply->read(kMaxM3UBytes + 1);
             reply->deleteLater();
-            nam->deleteLater();
 
             if (raw.size() > kMaxM3UBytes) {
                 m_loadingChannels = false;
@@ -537,6 +550,7 @@ void MainWindow::loadChannels(const QString &categoryId)
                 statusBar()->showMessage(t(QStringLiteral("channel_load_error")) + err, 6000);
                 return;
             }
+            if (m_channelCache.size() >= 50) m_channelCache.clear();
             m_channelCache.insert(allKey, channels);
             QList<Channel> favs;
             for (const Channel &ch : channels)
@@ -565,6 +579,7 @@ void MainWindow::loadChannels(const QString &categoryId)
             statusBar()->showMessage(t(QStringLiteral("channel_load_error")) + err, 6000);
             return;
         }
+        if (m_channelCache.size() >= 50) m_channelCache.clear();
         m_channelCache.insert(key, channels);
         finalize(channels);
     };

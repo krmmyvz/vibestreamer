@@ -6,6 +6,22 @@
 #include <QCryptographicHash>
 #include <QFile>
 
+void ImageCache::insertToMemCache(const QString &url, const QPixmap &pixmap)
+{
+    if (m_cache.contains(url)) {
+        // Refresh LRU position
+        m_lruOrder.removeOne(url);
+    } else if (m_cache.size() >= MaxMemCache) {
+        // Evict oldest 10% to avoid evicting one-at-a-time on every insert
+        const int toEvict = MaxMemCache / 10;
+        for (int i = 0; i < toEvict && !m_lruOrder.isEmpty(); ++i) {
+            m_cache.remove(m_lruOrder.takeFirst());
+        }
+    }
+    m_cache.insert(url, pixmap);
+    m_lruOrder.append(url);
+}
+
 ImageCache::ImageCache(QObject *parent) : QObject(parent)
 {
     QString cachePath = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + QDir::separator() + "logos";
@@ -56,7 +72,7 @@ QPixmap ImageCache::get(const QString &url, bool *ok)
 
         if (!img.isNull()) {
             QPixmap pixmap = QPixmap::fromImage(img);
-            m_cache.insert(url, pixmap);
+            insertToMemCache(url, pixmap);
             emit imageLoaded(url, pixmap);
             return;
         }
@@ -128,7 +144,7 @@ void ImageCache::processQueue()
 
                     if (!img.isNull()) {
                         QPixmap pixmap = QPixmap::fromImage(img);
-                        m_cache.insert(url, pixmap);
+                        insertToMemCache(url, pixmap);
                         emit imageLoaded(url, pixmap);
                     }
                 });

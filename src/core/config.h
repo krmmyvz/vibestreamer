@@ -4,6 +4,7 @@
 #include <QString>
 #include <QMap>
 #include <QSet>
+#include <chrono>
 
 class Config {
 public:
@@ -14,6 +15,10 @@ public:
     void removeSource(const QString &sourceId);
     void updateSource(const Source &source);
     Source *getSource(const QString &sourceId);
+
+    // save() is debounced (≤300 ms delay). Use flushSave() for critical writes.
+    void save();
+    void flushSave();
 
     bool toggleFavorite(const QString &streamUrl);
     bool isFavorite(const QString &streamUrl) const;
@@ -45,7 +50,10 @@ public:
 
 private:
     void load();
+    void doSave();
     QString configFilePath() const;
 
     QSet<QString> m_favoriteSet;
+    bool m_dirty = false;
+    std::chrono::steady_clock::time_point m_lastSave{};
 };

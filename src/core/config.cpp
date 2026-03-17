@@ -100,6 +100,24 @@ void Config::load()
 
 void Config::save()
 {
+    m_dirty = true;
+    const auto now = std::chrono::steady_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(now - m_lastSave).count() >= 300) {
+        doSave();
+        m_lastSave = now;
+        m_dirty = false;
+    }
+}
+
+void Config::flushSave()
+{
+    doSave();
+    m_dirty = false;
+    m_lastSave = std::chrono::steady_clock::now();
+}
+
+void Config::doSave()
+{
     QJsonArray srcArr;
     for (const Source &s : sources) {
         QJsonObject o;
@@ -173,13 +191,13 @@ void Config::addSource(Source source)
     if (source.id.isEmpty())
         source.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     sources.append(source);
-    save();
+    flushSave();
 }
 
 void Config::removeSource(const QString &sourceId)
 {
     sources.removeIf([&](const Source &s){ return s.id == sourceId; });
-    save();
+    flushSave();
 }
 
 void Config::updateSource(const Source &source)
@@ -187,7 +205,7 @@ void Config::updateSource(const Source &source)
     for (Source &s : sources) {
         if (s.id == source.id) { s = source; break; }
     }
-    save();
+    flushSave();
 }
 
 Source *Config::getSource(const QString &sourceId)

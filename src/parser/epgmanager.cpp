@@ -132,9 +132,12 @@ void EpgManager::load(const QString &urlsStr)
                     connect(mergeWatcher, &QFutureWatcher<EpgState>::finished, this, [this, mergeWatcher, generation]() {
                         if (generation == m_loadGeneration) {
                             EpgState finalState = mergeWatcher->result();
-                            m_data = finalState.data;
-                            m_nameToId = finalState.nameToId;
-                            m_channelIdByLower = finalState.channelIdByLower;
+                            {
+                                QWriteLocker locker(&m_lock);
+                                m_data            = std::move(finalState.data);
+                                m_nameToId        = std::move(finalState.nameToId);
+                                m_channelIdByLower = std::move(finalState.channelIdByLower);
+                            }
                             emit loaded();
                         }
                         mergeWatcher->deleteLater();
@@ -259,6 +262,8 @@ QString EpgManager::resolveChannelId(const QString &epgChannelId) const
 {
     if (epgChannelId.isEmpty()) return {};
 
+    QReadLocker locker(&m_lock);
+
     // 1. Exact match
     if (m_data.contains(epgChannelId))
         return epgChannelId;
@@ -284,7 +289,11 @@ EpgProgram EpgManager::currentProgram(const QString &channelId) const
 {
     const QString resolved = resolveChannelId(channelId);
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    const QList<EpgProgram> &list = m_data.value(resolved);
+
+    QReadLocker locker(&m_lock);
+    const QList<EpgProgram> list = m_data.value(resolved); // copy under lock
+    locker.unlock();
+
     if (list.isEmpty())
         return {};
 
@@ -308,7 +317,11 @@ EpgProgram EpgManager::nextProgram(const QString &channelId) const
 {
     const QString resolved = resolveChannelId(channelId);
     const qint64 now = QDateTime::currentSecsSinceEpoch();
-    const QList<EpgProgram> &list = m_data.value(resolved);
+
+    QReadLocker locker(&m_lock);
+    const QList<EpgProgram> list = m_data.value(resolved); // copy under lock
+    locker.unlock();
+
     if (list.isEmpty())
         return {};
 
@@ -321,5 +334,6 @@ EpgProgram EpgManager::nextProgram(const QString &channelId) const
 
 QList<EpgProgram> EpgManager::programs(const QString &channelId) const
 {
+    QReadLocker locker(&m_lock);
     return m_data.value(resolveChannelId(channelId));
 }

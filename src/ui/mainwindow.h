@@ -24,6 +24,7 @@
 class MpvWidget;
 class XtreamClient;
 class MultiViewWidget;
+class QNetworkAccessManager;
 class QStackedWidget;
 
 class MainWindow : public QMainWindow {
@@ -159,6 +160,8 @@ private:
     QHash<CacheKey, QList<Channel>>   m_channelCache;
     // Cache: sourceId → parsed M3U channels (all types)
     QHash<QString, QList<Channel>>    m_m3uCache;
+    // In-flight M3U network request (aborted on source switch)
+    QNetworkAccessManager            *m_m3uNam = nullptr;
     // Logo URL → list widget row indices (for O(1) icon update)
     QHash<QString, QList<int>>        m_logoUrlToRows;
 

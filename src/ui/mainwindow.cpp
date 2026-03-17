@@ -161,7 +161,7 @@ void MainWindow::closeEvent(QCloseEvent *e)
 
     m_config.windowWidth  = width();
     m_config.windowHeight = height();
-    m_config.save();
+    m_config.flushSave(); // flush any pending debounced writes before exit
     e->accept();
 }
 
