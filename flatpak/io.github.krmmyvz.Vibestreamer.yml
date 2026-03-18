@@ -49,7 +49,7 @@ modules:
       - type: git
         url: https://chromium.googlesource.com/webm/libvpx.git
         tag: v1.14.1
-        commit: caf6a854fd11f8867e6f5bfcfe9c6f3d22ec1b54
+        commit: 12f3a2ac603e8f10742105519e0cd03c3b8f71dd
 
   # ── libopus ─────────────────────────────────────────────────────────────────
   - name: opus
