@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.krmmyvz.Vibestreamer</id>
+  <name>Vibestreamer</name>
+  <summary>Modern IPTV player with Xtream and M3U support</summary>
+
+  <description>
+    <p>
+      Vibestreamer is a modern, lightweight IPTV player built with Qt6 and libmpv.
+      It supports Xtream Codes API sources and M3U playlists, with features including
+      Electronic Program Guide (EPG), Picture-in-Picture mode, multi-view (4-screen),
+      channel recording, favorites, and fuzzy search.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Xtream Codes API and M3U playlist support</li>
+      <li>Electronic Program Guide (XMLTV/EPG) with progress indicator</li>
+      <li>Picture-in-Picture (PiP) mode</li>
+      <li>4-screen multi-view</li>
+      <li>Channel recording</li>
+      <li>Hardware-accelerated video decoding</li>
+      <li>Fuzzy channel search</li>
+      <li>Dark and light themes</li>
+    </ul>
+  </description>
+
+  <url type="homepage">https://github.com/krmmyvz/vibestreamer</url>
+  <url type="bugtracker">https://github.com/krmmyvz/vibestreamer/issues</url>
+
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <developer id="io.github.krmmyvz">
+    <name>krmmyvz</name>
+  </developer>
+
+  <launchable type="desktop-id">io.github.krmmyvz.Vibestreamer.desktop</launchable>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Main window showing channel list and player</caption>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="1.3.2" date="2026-03-19">
+      <description>
+        <ul>
+          <li>M3U disk cache for faster startup</li>
+          <li>Fuzzy channel search</li>
+          <li>EPG progress bar in channel list</li>
+          <li>Multiview stability improvements</li>
+          <li>Codebase restructured into logical modules</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+
+  <content_rating type="oars-1.1" />
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <requires>
+    <display_length compare="ge">800</display_length>
+    <internet>always</internet>
+  </requires>
+</component>
