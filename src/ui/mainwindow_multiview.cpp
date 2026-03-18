@@ -6,6 +6,7 @@
 #include <QMenuBar>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QTimer>
 
 void MainWindow::onOpenMultiView()
 {
@@ -32,6 +33,37 @@ void MainWindow::onOpenMultiView()
                         if (eq > 0) p->setMpvProperty(part.left(eq), part.mid(eq + 1));
                     }
                 }
+                // Reduce per-player buffer for multiview: 4 streams × 30s cache
+                // overwhelms RAM and network. 5s is enough for live IPTV.
+                p->setMpvProperty(QStringLiteral("cache-secs"),       QStringLiteral("5"));
+                p->setMpvProperty(QStringLiteral("demuxer-max-bytes"), QStringLiteral("10MiB"));
+
+                // Auto-retry with exponential backoff when a stream fails to load.
+                // IPTV servers often reject concurrent connections — retry gives
+                // the server time to accept after an initial refusal.
+                connect(p, &MpvWidget::errorOccurred, this, [this, i](const QString &err) {
+                    if (!m_multiViewMode || !m_multiViewWidget) return;
+                    const QString url = m_multiViewChannels[i].streamUrl;
+                    if (url.isEmpty()) return;
+
+                    const int delay = m_multiViewRetryDelay[i];
+                    qWarning() << "[MultiView] player" << i << "error:" << err
+                               << "— retrying in" << delay << "s";
+                    // Double the delay for next failure, cap at 30s
+                    m_multiViewRetryDelay[i] = qMin(delay * 2, 30);
+
+                    QTimer::singleShot(delay * 1000, this, [this, i, url]() {
+                        if (m_multiViewMode && m_multiViewWidget
+                                && m_multiViewChannels[i].streamUrl == url) {
+                            m_multiViewWidget->player(i)->play(url);
+                        }
+                    });
+                });
+
+                // Reset retry delay on successful playback start
+                connect(p, &MpvWidget::playbackStarted, this, [this, i]() {
+                    m_multiViewRetryDelay[i] = 2;
+                });
             }
 
             connect(m_multiViewWidget, &MultiViewWidget::activeChanged,
@@ -46,6 +78,7 @@ void MainWindow::onOpenMultiView()
 
         // Transfer current channel to cell 0
         if (!m_currentChannel.streamUrl.isEmpty()) {
+            m_multiViewRetryDelay[0] = 2;
             m_multiViewWidget->player(0)->play(m_currentChannel.streamUrl);
             m_multiViewChannels[0] = m_currentChannel;
         }

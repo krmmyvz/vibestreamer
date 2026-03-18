@@ -20,6 +20,7 @@
 #include <QSystemTrayIcon>
 #include <QCompleter>
 #include <QStringListModel>
+#include "fuzzyproxymodel.h"
 
 class MpvWidget;
 class XtreamClient;
@@ -110,6 +111,7 @@ private:
     void updateEpgPanel(const Channel &ch);
     void updateInfoPanel(const Channel &ch);
     void updateFavoriteButton(const Channel &ch);
+    void updateChannelListEpg();
     QString formatTime(double secs) const;
     void updateStyle();
     QString t(const QString &key) const;
@@ -184,7 +186,7 @@ private:
     QComboBox      *m_viewModeCombo;
     QListView *m_channelList;
     QStandardItemModel *m_chanModel;
-    QSortFilterProxyModel *m_proxyModel;
+    FuzzyProxyModel       *m_proxyModel;
 
     // Player panel
     QWidget         *m_playerPanel;
@@ -192,6 +194,9 @@ private:
     MpvWidget       *m_mpv;
     MultiViewWidget *m_multiViewWidget = nullptr;
     Channel          m_multiViewChannels[4];
+    int              m_multiViewRetryDelay[4] = {2, 2, 2, 2}; // seconds, doubles on each failure
+    int              m_m3uParseGeneration = 0; // incremented on each M3U load; stale callbacks are dropped
+    QTimer          *m_epgListTimer = nullptr;
 
     // Control bar
     QToolButton    *m_playPauseBtn;

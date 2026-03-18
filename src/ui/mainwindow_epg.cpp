@@ -2,6 +2,7 @@
 #include "xtreamclient.h"
 #include "icons.h"
 #include "localization.h"
+#include "channeldelegate.h"
 
 #include <QDateTime>
 #include <QStandardItemModel>
@@ -76,6 +77,37 @@ void MainWindow::updateFavoriteButton(const Channel &ch)
     m_favoriteBtn->setIcon(ch.isFavorite
         ? Icons::starFilled(m_theme.iconFavActive)
         : Icons::starOutline(m_theme.iconDefault));
+}
+
+void MainWindow::updateChannelListEpg()
+{
+    // Only meaningful for Live streams (EPG is not available for VOD/Series)
+    if (m_streamType != StreamType::Live) return;
+    if (!m_chanModel || m_allChannels.isEmpty()) return;
+
+    const qint64 now = QDateTime::currentSecsSinceEpoch();
+    const int count = qMin(m_chanModel->rowCount(), m_allChannels.size());
+
+    for (int i = 0; i < count; ++i) {
+        auto *item = m_chanModel->item(i);
+        if (!item) continue;
+
+        const Channel &ch = m_allChannels[i];
+        if (ch.epgChannelId.isEmpty()) continue;
+
+        const EpgProgram cur = m_epg->currentProgram(ch.epgChannelId);
+        if (cur.title.isEmpty()) {
+            item->setData(QVariant(), ChannelEpgProgressRole);
+            item->setData(QVariant(), ChannelEpgTitleRole);
+        } else {
+            const qint64 dur = cur.stopTs - cur.startTs;
+            const int pct = dur > 0
+                ? static_cast<int>((now - cur.startTs) * 100 / dur)
+                : 0;
+            item->setData(qBound(0, pct, 100), ChannelEpgProgressRole);
+            item->setData(cur.title, ChannelEpgTitleRole);
+        }
+    }
 }
 
 void MainWindow::onToggleFavorite()

@@ -7,6 +7,7 @@
 #include "imagecache.h"
 #include "localization.h"
 #include "theme.h"
+#include "channeldelegate.h"
 
 static bool isSafeMpvProperty(const QString &name)
 {
@@ -203,10 +204,10 @@ void MainWindow::setupSidebar()
 
     chLay->addLayout(filterLay);
 
-    m_channelList = new QListView; m_chanModel = new QStandardItemModel(this); m_proxyModel = new QSortFilterProxyModel(this);
+    m_channelList = new QListView; m_chanModel = new QStandardItemModel(this); m_proxyModel = new FuzzyProxyModel(this);
     m_proxyModel->setSourceModel(m_chanModel);
-    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
     m_channelList->setModel(m_proxyModel); m_channelList->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_channelList->setItemDelegate(new ChannelItemDelegate(m_channelList));
     m_channelList->setAlternatingRowColors(false);
     m_channelList->setSpacing(1);
     m_channelList->setContextMenuPolicy(Qt::CustomContextMenu);

@@ -31,6 +31,10 @@ MpvWidget::MpvWidget(QWidget *parent)
     mpv_set_option_string(m_mpv, "cache",        "yes");
     mpv_set_option_string(m_mpv, "cache-secs",   "30");
 
+    // Fail fast on dead connections: if no data arrives for 10s, emit error
+    // instead of spinning the demuxer thread indefinitely (fixes multiview CPU spike)
+    mpv_set_option_string(m_mpv, "network-timeout", "10");
+
     // Reduce idle CPU: only render when mpv signals a new frame
     mpv_set_option_string(m_mpv, "video-timing-offset", "0");
     mpv_set_option_string(m_mpv, "idle",         "yes");
@@ -179,10 +183,11 @@ void MpvWidget::handleMpvEvent(mpv_event *event)
         break;
     case MPV_EVENT_END_FILE: {
         const auto *ef = static_cast<mpv_event_end_file *>(event->data);
-        if (ef->reason == MPV_END_FILE_REASON_ERROR)
+        if (ef->reason == MPV_END_FILE_REASON_ERROR) {
             emit errorOccurred(QString::fromUtf8(mpv_error_string(ef->error)));
-        else
+        } else {
             emit playbackFinished();
+        }
         break;
     }
     case MPV_EVENT_PROPERTY_CHANGE: {

@@ -13,6 +13,10 @@
 #include <QColor>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QListView>
 #include <QMenu>
 #include <QMessageBox>
@@ -24,6 +28,8 @@
 #include <QSortFilterProxyModel>
 #include <QStandardItem>
 #include <QStandardItemModel>
+#include <QRegularExpression>
+#include <QStandardPaths>
 #include <QStatusBar>
 #include <QSystemTrayIcon>
 #include <QTimer>
@@ -70,6 +76,117 @@ static bool isSafeUrl(const QString &url)
     const QString s = url.trimmed();
     return s.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)
         || s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive);
+}
+
+// ─── M3U disk cache helpers ──────────────────────────────────────────────────
+
+static QString m3uCachePath(const QString &sourceId)
+{
+    const QString dir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation)
+                        + QStringLiteral("/m3u");
+    QDir().mkpath(dir);
+    // Sanitize sourceId so it's safe as a filename
+    QString safe = sourceId;
+    safe.replace(QRegularExpression(QStringLiteral("[^a-zA-Z0-9_-]")), QStringLiteral("_"));
+    return dir + QLatin1Char('/') + safe + QStringLiteral(".json");
+}
+
+static QJsonObject channelToJson(const Channel &ch)
+{
+    QJsonObject o;
+    o[u"id"]           = ch.id;
+    o[u"name"]         = ch.name;
+    o[u"stream_url"]   = ch.streamUrl;
+    o[u"stream_type"]  = static_cast<int>(ch.streamType);
+    o[u"source_id"]    = ch.sourceId;
+    o[u"category_id"]  = ch.categoryId;
+    o[u"category_name"]= ch.categoryName;
+    o[u"logo_url"]     = ch.logoUrl;
+    o[u"epg_id"]       = ch.epgChannelId;
+    o[u"num"]          = ch.num;
+    o[u"rating"]       = ch.rating;
+    o[u"year"]         = ch.year;
+    o[u"plot"]         = ch.plot;
+    o[u"genre"]        = ch.genre;
+    o[u"duration"]     = ch.duration;
+    o[u"director"]     = ch.director;
+    o[u"cast"]         = ch.cast;
+    o[u"backdrop_url"] = ch.backdropUrl;
+    return o;
+}
+
+static Channel channelFromJson(const QJsonObject &o)
+{
+    Channel ch;
+    ch.id            = o[u"id"].toString();
+    ch.name          = o[u"name"].toString();
+    ch.streamUrl     = o[u"stream_url"].toString();
+    ch.streamType    = static_cast<StreamType>(o[u"stream_type"].toInt());
+    ch.sourceId      = o[u"source_id"].toString();
+    ch.categoryId    = o[u"category_id"].toString();
+    ch.categoryName  = o[u"category_name"].toString();
+    ch.logoUrl       = o[u"logo_url"].toString();
+    ch.epgChannelId  = o[u"epg_id"].toString();
+    ch.num           = o[u"num"].toInt();
+    ch.rating        = o[u"rating"].toString();
+    ch.year          = o[u"year"].toString();
+    ch.plot          = o[u"plot"].toString();
+    ch.genre         = o[u"genre"].toString();
+    ch.duration      = o[u"duration"].toString();
+    ch.director      = o[u"director"].toString();
+    ch.cast          = o[u"cast"].toString();
+    ch.backdropUrl   = o[u"backdrop_url"].toString();
+    return ch;
+}
+
+// Returns true and populates channels/epgUrl if a valid, fresh cache exists.
+static bool loadM3UDiskCache(const QString &sourceId, int ttlHours,
+                              QList<Channel> &channels, QString &epgUrl)
+{
+    const QString path = m3uCachePath(sourceId);
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) return false;
+
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    if (!doc.isObject()) return false;
+
+    const QJsonObject root = doc.object();
+    const qint64 savedAt = root[u"saved_at"].toInteger();
+    const int effectiveTtl = ttlHours > 0 ? ttlHours : 24;
+    if (QDateTime::currentSecsSinceEpoch() - savedAt > effectiveTtl * 3600)
+        return false; // expired
+
+    epgUrl = root[u"epg_url"].toString();
+    const QJsonArray arr = root[u"channels"].toArray();
+    channels.reserve(arr.size());
+    for (const QJsonValue &v : arr)
+        channels.append(channelFromJson(v.toObject()));
+
+    return !channels.isEmpty();
+}
+
+static void saveM3UDiskCache(const QString &sourceId, const QList<Channel> &channels,
+                              const QString &epgUrl)
+{
+    QJsonArray arr;
+    for (const Channel &ch : channels)
+        arr.append(channelToJson(ch));
+
+    QJsonObject root;
+    root[u"saved_at"] = QDateTime::currentSecsSinceEpoch();
+    root[u"epg_url"]  = epgUrl;
+    root[u"channels"] = arr;
+
+    const QString path    = m3uCachePath(sourceId);
+    const QString tmpPath = path + QStringLiteral(".tmp");
+    QFile f(tmpPath);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        f.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+        f.flush();
+        f.close();
+        QFile::remove(path);
+        QFile::rename(tmpPath, path);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -420,6 +537,22 @@ void MainWindow::loadChannels(const QString &categoryId)
 
         if (m_loadingChannels) return;  // prevent duplicate requests
         m_loadingChannels = true;
+        const int generation = ++m_m3uParseGeneration;
+
+        // ── Check disk cache first ──────────────────────────────────────────
+        {
+            QList<Channel> cached;
+            QString cachedEpgUrl;
+            if (loadM3UDiskCache(src.id, src.autoUpdateIntervalHours, cached, cachedEpgUrl)) {
+                m_m3uCache.insert(src.id, cached);
+                m_loadingChannels = false;
+                if (!cachedEpgUrl.isEmpty() && src.epgUrl.isEmpty())
+                    m_epg->load(cachedEpgUrl);
+                loadCategories(src.id, m_streamType);
+                return;
+            }
+        }
+
         statusBar()->showMessage(t(QStringLiteral("loading_m3u")));
 
         m_loadingProgress->setVisible(true);
@@ -439,7 +572,7 @@ void MainWindow::loadChannels(const QString &categoryId)
                          QNetworkRequest::NoLessSafeRedirectPolicy);
         req.setTransferTimeout(60000); // Increased timeout to 60s
         QNetworkReply *reply = m_m3uNam->get(req);
-        connect(reply, &QNetworkReply::finished, this, [this, reply, src, finalize]() {
+        connect(reply, &QNetworkReply::finished, this, [this, reply, src, finalize, generation]() {
             // NAM was deleted on source switch — nothing to do
             if (!m_m3uNam) {
                 reply->deleteLater();
@@ -476,9 +609,15 @@ void MainWindow::loadChannels(const QString &categoryId)
 
             // Offload parsing to background thread
             auto *watcher = new QFutureWatcher<M3UParser::Result>(this);
-            connect(watcher, &QFutureWatcher<M3UParser::Result>::finished, this, [this, watcher, src, finalize]() {
+            connect(watcher, &QFutureWatcher<M3UParser::Result>::finished, this, [this, watcher, src, finalize, generation]() {
                 M3UParser::Result result = watcher->result();
                 watcher->deleteLater();
+
+                // Drop stale parse results from a previous source load
+                if (generation != m_m3uParseGeneration) {
+                    m_loadingChannels = false;
+                    return;
+                }
 
                 const int currentSrcIdx = m_sourceCombo->currentIndex();
                 bool isSameSource = (currentSrcIdx >= 0 && m_config.sources[currentSrcIdx].id == src.id);
@@ -494,8 +633,9 @@ void MainWindow::loadChannels(const QString &categoryId)
                 }
 
                 m_m3uCache.insert(src.id, all);
-                DEV_STAT("m3u_cache_sources", m_m3uCache.size());
-                DEV_STAT("m3u_total_channels", all.size());
+
+                // Persist to disk so next startup skips the download
+                saveM3UDiskCache(src.id, all, result.epgUrl);
 
                 // Check for embedded EPG URL
                 if (src.epgUrl.isEmpty() && !result.epgUrl.isEmpty()) {
@@ -697,8 +837,7 @@ void MainWindow::onSearchTextChanged(const QString &)
 
 void MainWindow::applySearchFilter()
 {
-    const QString q = m_searchEdit->text().trimmed();
-    m_proxyModel->setFilterFixedString(q);
+    m_proxyModel->setFuzzyPattern(m_searchEdit->text().trimmed());
 }
 
 void MainWindow::onViewModeChanged(int index)

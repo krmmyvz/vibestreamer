@@ -79,6 +79,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_epg, &EpgManager::loaded, this, [this]() {
         if (!m_currentChannel.epgChannelId.isEmpty())
             updateEpgPanel(m_currentChannel);
+        updateChannelListEpg();
     });
     connect(m_epg, &EpgManager::loadError, this, [this](const QString &err) {
         statusBar()->showMessage(t(QStringLiteral("epg_load_error")) + err, 6000);
@@ -89,6 +90,12 @@ MainWindow::MainWindow(QWidget *parent)
     epgTimer->setInterval(5 * 60 * 1000);
     connect(epgTimer, &QTimer::timeout, this, &MainWindow::refreshEpg);
     epgTimer->start();
+
+    // Refresh EPG progress bars in channel list every 60 seconds
+    m_epgListTimer = new QTimer(this);
+    m_epgListTimer->setInterval(60 * 1000);
+    connect(m_epgListTimer, &QTimer::timeout, this, &MainWindow::updateChannelListEpg);
+    m_epgListTimer->start();
 
     // Auto-update playlists every 10 minutes (checks if interval reached)
     m_autoUpdateTimer = new QTimer(this);
