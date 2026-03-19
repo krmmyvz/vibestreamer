@@ -92,6 +92,42 @@ modules:
         url: https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
         sha256: 40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
 
+  # ── libxpresent (X Present extension, required by mpv) ──────────────────────
+  - name: libxpresent
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://xorg.freedesktop.org/archive/individual/lib/libXpresent-1.0.1.tar.xz
+        sha256: b964df9e5a066daa5e08d2dc82692c57ca27d00b8cc257e8e960c9f1cf26231b
+
+  # ── glslang (libplacebo build dep) ──────────────────────────────────────────
+  - name: glslang
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_SHARED_LIBS=OFF
+      - -DENABLE_GLSLANG_BINARIES=OFF
+      - -DENABLE_OPT=OFF
+    cleanup: ['*']
+    sources:
+      - type: archive
+        url: https://github.com/KhronosGroup/glslang/archive/refs/tags/14.3.0.tar.gz
+        sha256: be6339048e20280938d9cb399fcdd06e04f8654d43e170e8cce5a56c9a754284
+
+  # ── libplacebo (mpv video output) ───────────────────────────────────────────
+  - name: libplacebo
+    buildsystem: meson
+    config-opts:
+      - -Dvulkan=disabled
+      - -Dglslang=enabled
+      - -Dd3d11=disabled
+      - -Ddemos=false
+    sources:
+      - type: git
+        url: https://code.videolan.org/videolan/libplacebo.git
+        tag: v7.349.0
+        commit: 9c4b6bbd7a1e223ffdd61affc4e5d463d42d4345
+
   # ── mpv / libmpv ────────────────────────────────────────────────────────────
   - name: mpv
     buildsystem: meson
@@ -132,4 +168,4 @@ modules:
     sources:
       - type: git
         url: https://github.com/krmmyvz/vibestreamer.git
-        commit: c49eb0a3b7eb0b2140fc95fff1d6fae453f410bc
+        commit: d59498a3ac78627da1c5206b6b9bceaf096a7245
