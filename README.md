@@ -37,6 +37,18 @@
 
 > Launch the app and use Settings → Appearance to switch between Dark and Light themes.
 
+| Dark Theme | Light Theme |
+|:---:|:---:|
+| ![Dark Theme](screenshots/01_dark_theme.png) | ![Light Theme](screenshots/02_light_theme.png) |
+
+| Multi-View (2×2) | Add Source |
+|:---:|:---:|
+| ![Multi-View](screenshots/03_multiview.png) | ![Add Source](screenshots/04_add_source.png) |
+
+| Settings |
+|:---:|
+| ![Settings](screenshots/05_settings.png) |
+
 ---
 
 ## Getting Started
