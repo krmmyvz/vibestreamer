@@ -7,3 +7,10 @@ CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 Makefile
+
+# AUR build artifacts
+aur/src/
+aur/pkg/
+aur/*.pkg.tar.zst
+aur/*.tar.gz
+aur/*.log
