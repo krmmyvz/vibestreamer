@@ -7,6 +7,12 @@
   ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
   ![Version](https://img.shields.io/badge/version-1.3.3-BB86FC)
   ![License](https://img.shields.io/badge/license-MIT-orange)
+
+  [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/krmmyvz)
+  [![Ethereum](https://img.shields.io/badge/ETH-3C3C3D?logo=ethereum&logoColor=white)](#support-the-project)
+  [![Bitcoin](https://img.shields.io/badge/BTC-F7931A?logo=bitcoin&logoColor=white)](#support-the-project)
+  [![Tron](https://img.shields.io/badge/TRON-FF0013?logo=tron&logoColor=white)](#support-the-project)
+  [![Solana](https://img.shields.io/badge/SOL-9945FF?logo=solana&logoColor=white)](#support-the-project)
 </div>
 
 ---
@@ -217,10 +223,10 @@ You can also donate via crypto:
 
 | Network | Address |
 |:--------|:--------|
-| **EVM** (Ethereum / BSC / Arbitrum) | `0x19B5BBd3303D929058Fa917a129faDA0b24C6d8C` |
-| **TRON** (TRC-20) | `TAfmRNw859PYW7pHX7oAszXVUV9vqbphbk` |
-| **Bitcoin** | `bc1qpyclcxm6xghgp66ujns7jxlutkqea6vsg6se9j` |
-| **Solana** (SPL) | `6VeaTtJSWMMK1DzNGf44KnYCcAojnMXpHWe931vyokbd` |
+| ![Ethereum](https://img.shields.io/badge/EVM-3C3C3D?logo=ethereum&logoColor=white) Ethereum / BSC / Arbitrum | `0x19B5BBd3303D929058Fa917a129faDA0b24C6d8C` |
+| ![Tron](https://img.shields.io/badge/TRC--20-FF0013?logo=tron&logoColor=white) TRON | `TAfmRNw859PYW7pHX7oAszXVUV9vqbphbk` |
+| ![Bitcoin](https://img.shields.io/badge/BTC-F7931A?logo=bitcoin&logoColor=white) Bitcoin | `bc1qpyclcxm6xghgp66ujns7jxlutkqea6vsg6se9j` |
+| ![Solana](https://img.shields.io/badge/SPL-9945FF?logo=solana&logoColor=white) Solana | `6VeaTtJSWMMK1DzNGf44KnYCcAojnMXpHWe931vyokbd` |
 
 ---
 
