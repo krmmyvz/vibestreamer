@@ -330,3 +330,65 @@ jobs:
           files: artifacts/**
           draft: false
           prerelease: false
+
+  # ─── AUR Publish (on tag push) ─────────────────────────────────────────────
+  aur-publish:
+    needs: [release]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config << EOF
+          Host aur.archlinux.org
+            IdentityFile ~/.ssh/aur
+            User aur
+          EOF
+
+      - name: Configure git
+        run: |
+          git config --global user.name "krmmyvz"
+          git config --global user.email "keremyvz58@gmail.com"
+
+      # ── vibestreamer (source package) ──
+      - name: Update vibestreamer PKGBUILD
+        run: |
+          SHA256=$(curl -sL "https://github.com/krmmyvz/vibestreamer/archive/refs/tags/v${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
+          cd aur
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${SHA256}')/" PKGBUILD
+
+      - name: Push vibestreamer to AUR
+        run: |
+          git clone ssh://aur@aur.archlinux.org/vibestreamer.git /tmp/aur-vibestreamer
+          cp aur/PKGBUILD /tmp/aur-vibestreamer/
+          cd /tmp/aur-vibestreamer
+          makepkg --printsrcinfo > .SRCINFO
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet || git commit -m "Update to ${VERSION}"
+          git push
+
+      # ── vibestreamer-bin (binary package) ──
+      - name: Update vibestreamer-bin PKGBUILD
+        run: |
+          cd aur/vibestreamer-bin
+          sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
+
+      - name: Push vibestreamer-bin to AUR
+        run: |
+          git clone ssh://aur@aur.archlinux.org/vibestreamer-bin.git /tmp/aur-vibestreamer-bin
+          cp aur/vibestreamer-bin/PKGBUILD /tmp/aur-vibestreamer-bin/
+          cd /tmp/aur-vibestreamer-bin
+          makepkg --printsrcinfo > .SRCINFO
+          git add PKGBUILD .SRCINFO
+          git diff --cached --quiet || git commit -m "Update to ${VERSION}"
+          git push

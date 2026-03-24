@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Vibestreamer
+GenericName=IPTV Player
+Comment=Modern IPTV player with Xtream and M3U support
+Exec=Vibestreamer
+Icon=vibestreamer
+Type=Application
+Categories=AudioVideo;Video;Player;Network;
+Keywords=iptv;stream;tv;m3u;xtream;player;live;
+Terminal=false
+StartupWMClass=Vibestreamer

@@ -1,0 +1,171 @@
+app-id: io.github.krmmyvz.Vibestreamer
+
+runtime: org.kde.Platform
+runtime-version: '6.7'
+sdk: org.kde.Sdk
+
+command: Vibestreamer
+
+rename-icon: vibestreamer
+
+finish-args:
+  - --share=network         # IPTV streaming
+  - --share=ipc             # X11 shared memory
+  - --socket=fallback-x11   # X11 fallback
+  - --socket=wayland        # Wayland native
+  - --device=dri            # GPU (OpenGL / hwdec)
+  - --socket=pulseaudio     # Audio output
+  - --filesystem=xdg-videos:create    # Recordings
+  - --filesystem=xdg-download:create  # Recordings alt. path
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /lib/cmake
+  - /share/man
+  - /share/doc
+  - '*.la'
+  - '*.a'
+
+modules:
+
+  # ── nasm (ffmpeg assembly optimizations) ────────────────────────────────────
+  - name: nasm
+    cleanup: ['*']
+    sources:
+      - type: archive
+        url: https://www.nasm.us/pub/nasm/releasebuilds/2.16.03/nasm-2.16.03.tar.bz2
+        sha256: bef3de159bcd61adf98bb7cc87ee9046e944644ad76b7633f18ab063edb29e57
+
+  # ── libvpx (VP8/VP9) ────────────────────────────────────────────────────────
+  - name: libvpx
+    config-opts:
+      - --prefix=/app
+      - --enable-shared
+      - --disable-static
+      - --disable-examples
+      - --disable-unit-tests
+    sources:
+      - type: git
+        url: https://chromium.googlesource.com/webm/libvpx.git
+        tag: v1.14.1
+        commit: 12f3a2ac603e8f10742105519e0cd03c3b8f71dd
+
+  # ── libopus ─────────────────────────────────────────────────────────────────
+  - name: opus
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://downloads.xiph.org/releases/opus/opus-1.5.2.tar.gz
+        sha256: 65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
+
+  # ── libass (subtitles) ──────────────────────────────────────────────────────
+  - name: libass
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://github.com/libass/libass/releases/download/0.17.3/libass-0.17.3.tar.gz
+        sha256: da7c348deb6fa6c24507afab2dee7545ba5dd5bbf90a137bfe9e738f7df68537
+
+  # ── ffmpeg ──────────────────────────────────────────────────────────────────
+  - name: ffmpeg
+    config-opts:
+      - --prefix=/app
+      - --enable-shared
+      - --disable-static
+      - --disable-doc
+      - --disable-programs
+      - --enable-gpl
+      - --enable-version3
+      # Codecs needed for IPTV (HLS/MPEG-TS streams)
+      - --enable-libvpx
+      - --enable-libopus
+      - --enable-libass
+      - --enable-libmp3lame
+      # Hardware decode bridges (GPU passthrough via --device=dri)
+      - --enable-vaapi
+      - --enable-vdpau
+    sources:
+      - type: archive
+        url: https://ffmpeg.org/releases/ffmpeg-7.1.tar.xz
+        sha256: 40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+
+  # ── libxpresent (X Present extension, required by mpv) ──────────────────────
+  - name: libxpresent
+    config-opts:
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://xorg.freedesktop.org/archive/individual/lib/libXpresent-1.0.1.tar.xz
+        sha256: b964df9e5a066daa5e08d2dc82692c57ca27d00b8cc257e8e960c9f1cf26231b
+
+  # ── glslang (libplacebo build dep) ──────────────────────────────────────────
+  - name: glslang
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_SHARED_LIBS=OFF
+      - -DENABLE_GLSLANG_BINARIES=OFF
+      - -DENABLE_OPT=OFF
+    cleanup: ['*']
+    sources:
+      - type: archive
+        url: https://github.com/KhronosGroup/glslang/archive/refs/tags/14.3.0.tar.gz
+        sha256: be6339048e20280938d9cb399fcdd06e04f8654d43e170e8cce5a56c9a754284
+
+  # ── libplacebo (mpv video output) ───────────────────────────────────────────
+  - name: libplacebo
+    buildsystem: meson
+    config-opts:
+      - -Dvulkan=disabled
+      - -Dglslang=enabled
+      - -Dd3d11=disabled
+      - -Ddemos=false
+    sources:
+      - type: git
+        url: https://code.videolan.org/videolan/libplacebo.git
+        tag: v7.349.0
+        commit: 9c4b6bbd7a1e223ffdd61affc4e5d463d42d4345
+
+  # ── mpv / libmpv ────────────────────────────────────────────────────────────
+  - name: mpv
+    buildsystem: meson
+    config-opts:
+      - -Dlibmpv=true
+      - -Dcplayer=false    # we only need the library, not the mpv player binary
+      - -Dbuild-date=false
+      - -Dalsa=enabled
+      - -Dpulse=enabled
+      - -Dwayland=enabled
+      - -Dx11=enabled
+      - -Dgl=enabled
+      - -Dvulkan=disabled
+      - -Dvaapi=enabled
+      - -Dlua=disabled
+      - -Djavascript=disabled
+      - -Duchardet=disabled
+      - -Ddrm=disabled
+      - -Ddvdnav=disabled
+      - -Dcdda=disabled
+    sources:
+      - type: archive
+        url: https://github.com/mpv-player/mpv/archive/refs/tags/v0.39.0.tar.gz
+        sha256: 2ca92437affb62c2b559b4419ea4785c70d023590500e8a52e95ea3ab4554683
+
+  # ── Vibestreamer ────────────────────────────────────────────────────────────
+  - name: vibestreamer
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    post-install:
+      - install -Dm644 flatpak/io.github.krmmyvz.Vibestreamer.metainfo.xml
+          /app/share/metainfo/io.github.krmmyvz.Vibestreamer.metainfo.xml
+      - install -Dm644 logo_concept1.svg
+          /app/share/icons/hicolor/scalable/apps/vibestreamer.svg
+      - install -Dm644 flatpak/io.github.krmmyvz.Vibestreamer.desktop
+          /app/share/applications/io.github.krmmyvz.Vibestreamer.desktop
+    sources:
+      - type: git
+        url: https://github.com/krmmyvz/vibestreamer.git
+        commit: d59498a3ac78627da1c5206b6b9bceaf096a7245

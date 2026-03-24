@@ -1,0 +1,332 @@
+name: Build Vibestreamer
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  # ─── Linux Build ────────────────────────────────────────────────────────────
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y \
+            cmake build-essential ninja-build \
+            libmpv-dev \
+            qt6-base-dev libqt6opengl6-dev libqt6svg6-dev \
+            libgl-dev libglu1-mesa-dev \
+            libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 \
+            libxcb-shape0 libxcb-xinerama0 fuse \
+            wget libzstd-dev imagemagick
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -GNinja
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Create AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/lib
+          mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+
+          # Copy main binary
+          cp build/Vibestreamer AppDir/usr/bin/
+
+          # Bundle libmpv — match any .so.N version (Ubuntu 22.04 ships libmpv.so.2)
+          cp /usr/lib/x86_64-linux-gnu/libmpv.so.* AppDir/usr/lib/ 2>/dev/null || \
+            cp /usr/lib/libmpv.so.* AppDir/usr/lib/ 2>/dev/null || true
+
+          # Desktop file — heredoc content indented to YAML block level (stripped by YAML parser)
+          cat > AppDir/Vibestreamer.desktop << 'EOF'
+          [Desktop Entry]
+          Name=Vibestreamer
+          Exec=Vibestreamer
+          Icon=vibestreamer
+          Type=Application
+          Categories=AudioVideo;Player;Network;
+          Comment=Modern IPTV player
+          Terminal=false
+          EOF
+
+          # Copy our new SVG icon so linuxdeploy can deploy it correctly
+          cp logo_concept1.svg vibestreamer.svg
+
+      - name: Download linuxdeploy
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy*.AppImage
+
+      - name: Build AppImage
+        env:
+          QMAKE: /usr/bin/qmake6
+          QML_SOURCES_PATHS: .
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/Vibestreamer \
+            --desktop-file AppDir/Vibestreamer.desktop \
+            --icon-file vibestreamer.svg \
+            --plugin qt \
+            --output appimage \
+            2>&1 || true
+
+          # Fallback: bundle into a portable tar.gz if AppImage creation failed
+          if [ ! -f Vibestreamer*.AppImage ]; then
+            mkdir -p release/bin release/lib
+            cp build/Vibestreamer release/bin/
+            cp AppDir/usr/lib/libmpv.so* release/lib/ 2>/dev/null || true
+
+            cat > release/Vibestreamer.sh << 'EOF'
+          #!/bin/bash
+          HERE="$(dirname "$(readlink -f "$0")")"
+          export LD_LIBRARY_PATH="$HERE/lib:$LD_LIBRARY_PATH"
+          exec "$HERE/bin/Vibestreamer" "$@"
+          EOF
+            chmod +x release/Vibestreamer.sh
+            tar -czf Vibestreamer-linux-x86_64.tar.gz -C release .
+          else
+            mv Vibestreamer*.AppImage Vibestreamer-linux-x86_64.AppImage
+          fi
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibestreamer-linux-x86_64
+          path: |
+            Vibestreamer-linux-x86_64.AppImage
+            Vibestreamer-linux-x86_64.tar.gz
+          if-no-files-found: warn
+
+  # ─── macOS Build ────────────────────────────────────────────────────────────
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: brew install mpv cmake ninja
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: "6.7.0"
+          host: mac
+          target: desktop
+          modules: "qtmultimedia qtimageformats"
+
+      - name: Configure
+        run: |
+          cmake -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -GNinja
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Bundle app with macdeployqt
+        run: |
+          # Create proper .app structure
+          APP_DIR="build/Vibestreamer.app"
+          mkdir -p "$APP_DIR/Contents/MacOS"
+          mkdir -p "$APP_DIR/Contents/Resources"
+          cp build/Vibestreamer "$APP_DIR/Contents/MacOS/"
+
+          cat > "$APP_DIR/Contents/Info.plist" << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>Vibestreamer</string>
+            <key>CFBundleIdentifier</key><string>com.krmmyvz.vibestreamer</string>
+            <key>CFBundleName</key><string>Vibestreamer</string>
+            <key>CFBundleVersion</key><string>2.0</string>
+            <key>CFBundleShortVersionString</key><string>2.0</string>
+            <key>NSHighResolutionCapable</key><true/>
+            <key>CFBundlePackageType</key><string>APPL</string>
+          </dict>
+          </plist>
+          EOF
+
+          macdeployqt "$APP_DIR" -dmg 2>&1 || true
+
+          if [ -f "build/Vibestreamer.dmg" ]; then
+            mv build/Vibestreamer.dmg Vibestreamer-macOS-arm64.dmg
+          else
+            cd build && zip -r ../Vibestreamer-macOS-arm64.zip Vibestreamer.app
+          fi
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibestreamer-macos-arm64
+          path: |
+            Vibestreamer-macOS-arm64.dmg
+            Vibestreamer-macOS-arm64.zip
+          if-no-files-found: warn
+
+  # ─── Windows Build ──────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt6
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: "6.7.0"
+          host: windows
+          target: desktop
+          arch: win64_msvc2019_64
+          modules: "qtmultimedia qtimageformats"
+
+      - name: Download libmpv
+        shell: pwsh
+        run: |
+          # Download mpv dev package from shinchiro's builds
+          $mpvUrl = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-dev-x86_64-20260307-git-f9190e5.7z"
+          Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
+          7z x mpv-dev.7z -ompv-dev
+
+      - name: Install Visual Studio tools
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: amd64
+
+      - name: Install ZLIB
+        run: vcpkg install zlib:x64-windows
+
+      - name: Configure
+        shell: pwsh
+        run: |
+          $mpvDir = "${{ github.workspace }}\mpv-dev"
+          cmake -B build `
+            -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DMPV_DIR="$mpvDir"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path dist
+          Copy-Item "build\Release\Vibestreamer.exe" dist\
+
+          # Copy mpv DLL — shinchiro builds use mpv-2.dll
+          $mpvDlls = Get-ChildItem "${{ github.workspace }}\mpv-dev" -Filter "*.dll"
+          Write-Host "mpv DLLs found: $($mpvDlls.Name)"
+          $mpvDlls | ForEach-Object { Copy-Item $_.FullName dist\ }
+
+          # Locate windeployqt — try multiple strategies in order
+          $windeployqt = $null
+
+          # 1. QT_ROOT_DIR set by install-qt-action (must actually contain windeployqt)
+          if ($env:QT_ROOT_DIR) {
+            $candidate = Join-Path $env:QT_ROOT_DIR "bin\windeployqt.exe"
+            if (Test-Path $candidate) { $windeployqt = $candidate }
+          }
+
+          # 2. Qt6_DIR points to lib/cmake/Qt6 — walk up 3 levels to get Qt root
+          if (-not $windeployqt -and $env:Qt6_DIR) {
+            $candidate = Join-Path (Split-Path (Split-Path (Split-Path $env:Qt6_DIR))) "bin\windeployqt.exe"
+            if (Test-Path $candidate) { $windeployqt = $candidate }
+          }
+
+          # 3. windeployqt already on PATH (install-qt-action adds Qt/bin to PATH)
+          if (-not $windeployqt) {
+            $found = Get-Command windeployqt.exe -ErrorAction SilentlyContinue
+            if ($found) { $windeployqt = $found.Source }
+          }
+
+          # 4. Brute-force search under RUNNER_WORKSPACE\Qt (install-qt-action default)
+          if (-not $windeployqt) {
+            $searchRoot = Join-Path $env:RUNNER_WORKSPACE "Qt"
+            if (Test-Path $searchRoot) {
+              $found = Get-ChildItem -Path $searchRoot -Filter "windeployqt.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) { $windeployqt = $found.FullName }
+            }
+          }
+
+          if (-not $windeployqt) {
+            Write-Error "windeployqt.exe could not be found. Searched: QT_ROOT_DIR=$env:QT_ROOT_DIR  Qt6_DIR=$env:Qt6_DIR  PATH and RUNNER_WORKSPACE\Qt"
+            exit 1
+          }
+
+          Write-Host "Using windeployqt: $windeployqt"
+          & $windeployqt dist\Vibestreamer.exe --release --no-translations --compiler-runtime 2>&1
+
+          # zlib1.dll is not copied by windeployqt — find and bundle it manually
+          if (-not (Test-Path "dist\zlib1.dll")) {
+            $zlibSearchRoots = @(
+              (Split-Path $windeployqt),                         # Qt/bin
+              "$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows\bin",
+              "$env:RUNNER_WORKSPACE\Qt"
+            )
+            $zlibFound = $null
+            foreach ($root in $zlibSearchRoots) {
+              if (-not $root -or -not (Test-Path $root)) { continue }
+              $hit = Get-ChildItem -Path $root -Filter "zlib1.dll" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($hit) { $zlibFound = $hit.FullName; break }
+            }
+            if ($zlibFound) {
+              Write-Host "Copying zlib1.dll from: $zlibFound"
+              Copy-Item $zlibFound dist\
+            } else {
+              Write-Warning "zlib1.dll not found — app may fail to start on systems without it"
+            }
+          }
+
+          Compress-Archive -Path dist\* -DestinationPath Vibestreamer-Windows-x64.zip
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibestreamer-windows-x64
+          path: Vibestreamer-Windows-x64.zip
+
+  # ─── Release (on tag push) ──────────────────────────────────────────────────
+  release:
+    needs: [build-linux, build-macos, build-windows]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Vibestreamer ${{ github.ref_name }}"
+          body: |
+            ## Vibestreamer ${{ github.ref_name }}
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | 🐧 Linux x86_64 | `Vibestreamer-linux-x86_64.AppImage` |
+            | 🍎 macOS ARM64 | `Vibestreamer-macOS-arm64.dmg` |
+            | 🪟 Windows x64 | `Vibestreamer-Windows-x64.zip` |
+          files: artifacts/**
+          draft: false
+          prerelease: false
