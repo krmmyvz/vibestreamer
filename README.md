@@ -5,7 +5,7 @@
 
   ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
   ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
-  ![Version](https://img.shields.io/badge/version-1.3.2-BB86FC)
+  ![Version](https://img.shields.io/badge/version-1.3.3-BB86FC)
   ![License](https://img.shields.io/badge/license-MIT-orange)
 </div>
 
@@ -200,6 +200,27 @@ v1.3.1 includes a full security hardening pass:
 - **Credential-free persistence** — Stream URLs (which embed Xtream credentials) are never written to disk; `lastChannelId` + `lastChannelSourceId` are stored instead
 - **Recording path** — Output directory validated to be within the user's home directory
 - **Reserved filename guard** — Windows reserved names (CON, NUL, COM1–9, LPT1–9) replaced in recording filenames
+
+---
+
+## Support the Project
+
+If you find Vibestreamer useful, consider supporting its development:
+
+<div align="center">
+
+[![Sponsor](https://img.shields.io/badge/GitHub_Sponsors-Support-ea4aaa?logo=githubsponsors&logoColor=white&style=for-the-badge)](https://github.com/sponsors/krmmyvz)
+
+</div>
+
+You can also donate via crypto:
+
+| Network | Address |
+|:--------|:--------|
+| **EVM** (Ethereum / BSC / Arbitrum) | `0x19B5BBd3303D929058Fa917a129faDA0b24C6d8C` |
+| **TRON** (TRC-20) | `TAfmRNw859PYW7pHX7oAszXVUV9vqbphbk` |
+| **Bitcoin** | `bc1qpyclcxm6xghgp66ujns7jxlutkqea6vsg6se9j` |
+| **Solana** (SPL) | `6VeaTtJSWMMK1DzNGf44KnYCcAojnMXpHWe931vyokbd` |
 
 ---
 
