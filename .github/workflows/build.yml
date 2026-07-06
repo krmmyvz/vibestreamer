@@ -84,21 +84,24 @@ jobs:
             --output appimage \
             2>&1 || true
 
-          # Fallback: bundle into a portable tar.gz if AppImage creation failed
-          if [ ! -f Vibestreamer*.AppImage ]; then
-            mkdir -p release/bin release/lib
-            cp build/Vibestreamer release/bin/
-            cp AppDir/usr/lib/libmpv.so* release/lib/ 2>/dev/null || true
+          # Always bundle a portable tar.gz (bin/ + lib/ + launcher). The
+          # vibestreamer-bin AUR package downloads this tarball, so it must exist
+          # on every release, not only when the AppImage fails to build.
+          mkdir -p release/bin release/lib
+          cp build/Vibestreamer release/bin/
+          cp AppDir/usr/lib/libmpv.so* release/lib/ 2>/dev/null || true
 
-            cat > release/Vibestreamer.sh << 'EOF'
+          cat > release/Vibestreamer.sh << 'EOF'
           #!/bin/bash
           HERE="$(dirname "$(readlink -f "$0")")"
           export LD_LIBRARY_PATH="$HERE/lib:$LD_LIBRARY_PATH"
           exec "$HERE/bin/Vibestreamer" "$@"
           EOF
-            chmod +x release/Vibestreamer.sh
-            tar -czf Vibestreamer-linux-x86_64.tar.gz -C release .
-          else
+          chmod +x release/Vibestreamer.sh
+          tar -czf Vibestreamer-linux-x86_64.tar.gz -C release .
+
+          # Additionally publish the AppImage when linuxdeploy produced one.
+          if [ -f Vibestreamer*.AppImage ]; then
             mv Vibestreamer*.AppImage Vibestreamer-linux-x86_64.AppImage
           fi
 
