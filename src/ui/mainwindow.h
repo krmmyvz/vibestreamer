@@ -27,6 +27,7 @@ class XtreamClient;
 class MultiViewWidget;
 class QNetworkAccessManager;
 class QStackedWidget;
+class SleepInhibitor;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -120,6 +121,9 @@ private:
     void connectActiveMpvSignals();
     void disconnectMpvSignals(MpvWidget *mpv);
 
+    // Prevent system sleep / screen lock while a video is actively playing.
+    void updateSleepInhibit();
+
     // ── Cache key helpers ──────────────────────────────────────────────
     struct CacheKey {
         QString sourceId;
@@ -152,6 +156,7 @@ private:
     bool            m_multiViewMode = false;
     bool            m_isRecording = false;
     bool            m_recordPaused = false;
+    bool            m_playbackActive = false;  // a file is loaded and not stopped/ended
     QString         m_recordFilePath;    // current recording file path
     int             m_recordSegment = 0; // segment counter for pause/resume
     QList<int>      m_savedSplitterSizes;
@@ -230,6 +235,9 @@ private:
 
     // System Tray
     QSystemTrayIcon *m_trayIcon = nullptr;
+
+    // Keeps the machine awake / screen unlocked during playback
+    SleepInhibitor *m_sleepInhibitor = nullptr;
 
     // (MultiViewWidget is stored as m_multiViewWidget above)
 

@@ -2,6 +2,7 @@
 #include "mpvwidget.h"
 #include "multiviewwidget.h"
 #include "localization.h"
+#include "sleepinhibitor.h"
 
 #include <QApplication>
 #include <QTimer>
@@ -60,6 +61,7 @@ static bool isSafeUrl(const QString &url)
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_epg(new EpgManager(this))
+    , m_sleepInhibitor(new SleepInhibitor(this))
 {
     I18n::instance().setLanguage(m_config.language);
 
@@ -128,10 +130,32 @@ void MainWindow::connectActiveMpvSignals()
     connect(mpv, &MpvWidget::positionChanged, this, &MainWindow::onPositionChanged);
     connect(mpv, &MpvWidget::durationChanged,  this, &MainWindow::onDurationChanged);
     connect(mpv, &MpvWidget::pauseChanged,     this, &MainWindow::onPauseChanged);
+    connect(mpv, &MpvWidget::playbackStarted,  this, [this]() {
+        m_playbackActive = true;
+        updateSleepInhibit();
+    });
+    connect(mpv, &MpvWidget::playbackFinished, this, [this]() {
+        m_playbackActive = false;
+        updateSleepInhibit();
+    });
     connect(mpv, &MpvWidget::errorOccurred,    this, [this, mpv](const QString &msg) {
         mpv->stop();
+        m_playbackActive = false;
+        updateSleepInhibit();
         statusBar()->showMessage(t(QStringLiteral("playback_error")) + msg, 8000);
     });
+}
+
+// Inhibit sleep/screen-lock only while a file is loaded AND not paused.
+// Driven from playback lifecycle + pause signals; setInhibited() is idempotent.
+void MainWindow::updateSleepInhibit()
+{
+    if (!m_sleepInhibitor)
+        return;
+    MpvWidget *mpv = activeMpv();
+    const bool paused = mpv ? mpv->isPaused() : true;
+    const bool active = m_playbackActive && mpv && !paused;
+    m_sleepInhibitor->setInhibited(active, m_currentChannel.name);
 }
 
 void MainWindow::disconnectMpvSignals(MpvWidget *mpv)
@@ -165,6 +189,9 @@ void MainWindow::closeEvent(QCloseEvent *e)
     // Stop any active recording before closing
     if (m_isRecording)
         onRecordStop();
+
+    // Release any sleep/screen-lock inhibition
+    m_sleepInhibitor->setInhibited(false);
 
     m_config.windowWidth  = width();
     m_config.windowHeight = height();

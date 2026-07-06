@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Vibestreamer VERSION 1.3.3 LANGUAGES CXX)
+project(Vibestreamer VERSION 1.3.4 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,6 +9,11 @@ set(CMAKE_AUTOUIC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets Network Xml OpenGL OpenGLWidgets Concurrent Svg)
 find_package(ZLIB REQUIRED)
+
+# Qt DBus is used on Linux to inhibit sleep / screen-lock during playback
+if(UNIX AND NOT APPLE)
+    find_package(Qt6 REQUIRED COMPONENTS DBus)
+endif()
 
 # libmpv detection — pkg-config first, then manual find, then MPV_DIR override
 set(MPV_DIR "" CACHE PATH "Manual path to libmpv (contains include/ and lib/). Set on Windows or when pkg-config fails.")
@@ -66,6 +71,7 @@ set(SOURCES
     src/main.cpp
     # core
     src/core/config.cpp
+    src/core/sleepinhibitor.cpp
     $<$<BOOL:${DEV_MODE}>:src/core/devstats.cpp>
     # network
     src/network/xtreamclient.cpp
@@ -127,6 +133,11 @@ target_link_libraries(Vibestreamer PRIVATE
     ${MPV_LIBRARIES}
     ZLIB::ZLIB
 )
+
+# Linux: Qt DBus for sleep/screen-lock inhibition
+if(UNIX AND NOT APPLE)
+    target_link_libraries(Vibestreamer PRIVATE Qt6::DBus)
+endif()
 
 # macOS: link OpenGL + IOKit frameworks
 if(APPLE)

@@ -5,7 +5,7 @@
 
   ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
   ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
-  ![Version](https://img.shields.io/badge/version-1.3.3-BB86FC)
+  ![Version](https://img.shields.io/badge/version-1.3.4-BB86FC)
   ![License](https://img.shields.io/badge/license-MIT-orange)
 
   [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/krmmyvz)
@@ -27,6 +27,7 @@
 - **Multi-View (2×2)** — Inline split-screen: player area divides into four cells; click any cell to make it active, double-click a channel to stream into it
 - **Favorites** — Persistent channel bookmarking with dedicated filter view
 - **Stream Recording** — Direct stream capture via mpv with pause/resume/stop and segmented output
+- **Sleep / Screen-Lock Inhibition** — Keeps the system awake and the screen unlocked while a video is playing (D-Bus on Linux, `SetThreadExecutionState` on Windows, IOKit on macOS); auto-released on pause/stop
 - **Dark / Light Theme** — Full dynamic theme switching, no restart required
 - **Accent Color** — Fully customizable UI accent color
 - **Instant Search & Filter** — Real-time channel search using `QSortFilterProxyModel`, with search history autocomplete

@@ -15,6 +15,7 @@ void MainWindow::onPlayPause()
 void MainWindow::onPauseChanged(bool paused)
 {
     m_playPauseBtn->setIcon(paused ? Icons::play(m_theme.iconAccent) : Icons::pause(m_theme.iconAccent));
+    updateSleepInhibit();
 }
 
 void MainWindow::onVolumeChanged(int value)
