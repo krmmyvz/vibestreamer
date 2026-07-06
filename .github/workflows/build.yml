@@ -121,8 +121,11 @@ jobs:
         run: brew install mpv cmake ninja
 
       - name: Install Qt6
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@v4
         with:
+          # aqtinstall <3.2.1 pulls an incompatible py7zr 1.x and fails to
+          # extract the Qt archives ("Bad7zFile: Specified path is bad").
+          aqtversion: ">=3.2.1"
           version: "6.7.0"
           host: mac
           target: desktop
@@ -185,8 +188,11 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Qt6
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@v4
         with:
+          # aqtinstall <3.2.1 pulls an incompatible py7zr 1.x and fails to
+          # extract the Qt archives ("Bad7zFile: Specified path is bad").
+          aqtversion: ">=3.2.1"
           version: "6.7.0"
           host: windows
           target: desktop
