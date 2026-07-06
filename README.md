@@ -5,7 +5,7 @@
 
   ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)
   ![Qt](https://img.shields.io/badge/Qt-6-41CD52?logo=qt)
-  ![Version](https://img.shields.io/badge/version-1.3.4-BB86FC)
+  ![Version](https://img.shields.io/badge/version-1.3.5-BB86FC)
   ![License](https://img.shields.io/badge/license-MIT-orange)
 
   [![Sponsor](https://img.shields.io/badge/Sponsor-ea4aaa?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/krmmyvz)
