@@ -13,7 +13,15 @@ public:
     {
         if (m_pattern == pattern) return;
         m_pattern = pattern.toLower();
+        // Qt 6.13 deprecates invalidateFilter() in favour of begin/endFilterChange()
+        // (available since 6.11). We only change the row filter here. Older Qt used by
+        // the CI build matrix (6.2 / 6.7) keeps the still-valid invalidateFilter().
+#if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0)
+        beginFilterChange();
+        endFilterChange(QSortFilterProxyModel::Direction::Rows);
+#else
         invalidateFilter();
+#endif
     }
 
 protected:
