@@ -366,24 +366,10 @@ jobs:
       - name: Set version from tag
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.AUR_SSH_PRIVATE_KEY }}" > ~/.ssh/aur
-          chmod 600 ~/.ssh/aur
-          ssh-keyscan aur.archlinux.org >> ~/.ssh/known_hosts
-          cat >> ~/.ssh/config << EOF
-          Host aur.archlinux.org
-            IdentityFile ~/.ssh/aur
-            User aur
-          EOF
-
-      - name: Configure git
-        run: |
-          git config --global user.name "krmmyvz"
-          git config --global user.email "keremyvz58@gmail.com"
-
       # ── vibestreamer (source package) ──
+      # .SRCINFO must be generated with makepkg, which does not exist on the
+      # Ubuntu runner. KSXGitHub/github-actions-deploy-aur runs makepkg inside an
+      # Arch container (as a non-root build user) and handles the SSH push.
       - name: Update vibestreamer PKGBUILD
         run: |
           SHA256=$(curl -sL "https://github.com/krmmyvz/vibestreamer/archive/refs/tags/v${VERSION}.tar.gz" | sha256sum | cut -d' ' -f1)
@@ -391,15 +377,15 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
           sed -i "s/^sha256sums=.*/sha256sums=('${SHA256}')/" PKGBUILD
 
-      - name: Push vibestreamer to AUR
-        run: |
-          git clone ssh://aur@aur.archlinux.org/vibestreamer.git /tmp/aur-vibestreamer
-          cp aur/PKGBUILD /tmp/aur-vibestreamer/
-          cd /tmp/aur-vibestreamer
-          makepkg --printsrcinfo > .SRCINFO
-          git add PKGBUILD .SRCINFO
-          git diff --cached --quiet || git commit -m "Update to ${VERSION}"
-          git push
+      - name: Publish vibestreamer to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+        with:
+          pkgname: vibestreamer
+          pkgbuild: ./aur/PKGBUILD
+          commit_username: krmmyvz
+          commit_email: keremyvz58@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ env.VERSION }}"
 
       # ── vibestreamer-bin (binary package) ──
       - name: Update vibestreamer-bin PKGBUILD
@@ -407,12 +393,12 @@ jobs:
           cd aur/vibestreamer-bin
           sed -i "s/^pkgver=.*/pkgver=${VERSION}/" PKGBUILD
 
-      - name: Push vibestreamer-bin to AUR
-        run: |
-          git clone ssh://aur@aur.archlinux.org/vibestreamer-bin.git /tmp/aur-vibestreamer-bin
-          cp aur/vibestreamer-bin/PKGBUILD /tmp/aur-vibestreamer-bin/
-          cd /tmp/aur-vibestreamer-bin
-          makepkg --printsrcinfo > .SRCINFO
-          git add PKGBUILD .SRCINFO
-          git diff --cached --quiet || git commit -m "Update to ${VERSION}"
-          git push
+      - name: Publish vibestreamer-bin to AUR
+        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+        with:
+          pkgname: vibestreamer-bin
+          pkgbuild: ./aur/vibestreamer-bin/PKGBUILD
+          commit_username: krmmyvz
+          commit_email: keremyvz58@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "Update to ${{ env.VERSION }}"
