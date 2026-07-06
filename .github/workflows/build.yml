@@ -201,10 +201,28 @@ jobs:
 
       - name: Download libmpv
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          # Download mpv dev package from shinchiro's builds
-          $mpvUrl = "https://github.com/shinchiro/mpv-winbuild-cmake/releases/download/20260307/mpv-dev-x86_64-20260307-git-f9190e5.7z"
-          Invoke-WebRequest -Uri $mpvUrl -OutFile mpv-dev.7z
+          # shinchiro rotates its dated releases and deletes old ones, so a pinned
+          # URL inevitably 404s. Resolve the newest baseline mpv-dev x86_64 asset
+          # dynamically via the GitHub API instead.
+          $headers = @{ "Authorization" = "Bearer $env:GH_TOKEN"; "User-Agent" = "vibestreamer-ci" }
+          $releases = Invoke-RestMethod -Headers $headers `
+            -Uri "https://api.github.com/repos/shinchiro/mpv-winbuild-cmake/releases?per_page=30"
+          $asset = $null
+          foreach ($rel in $releases) {
+            # "mpv-dev-x86_64-2*.7z" matches the baseline build (date starts with 2)
+            # and skips the -v3-/-v2- micro-architecture variants.
+            $asset = $rel.assets | Where-Object { $_.name -like "mpv-dev-x86_64-2*.7z" } | Select-Object -First 1
+            if ($asset) { break }
+          }
+          if (-not $asset) {
+            Write-Error "No mpv-dev-x86_64 asset found in shinchiro/mpv-winbuild-cmake releases"
+            exit 1
+          }
+          Write-Host "Downloading $($asset.name)"
+          Invoke-WebRequest -Uri $asset.browser_download_url -OutFile mpv-dev.7z
           7z x mpv-dev.7z -ompv-dev
 
       - name: Install Visual Studio tools
